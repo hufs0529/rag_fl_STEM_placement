@@ -30,7 +30,7 @@ import hashlib
 import json
 from collections import defaultdict
 from pathlib import Path
-from typing import Dict, Iterable, List, Sequence, Tuple
+from typing import Dict, Iterable, List, Sequence, Tuple, Optional
 
 from src.metrics import normalize_answer
 
@@ -178,7 +178,12 @@ class AnswerIndex:
 
 # --- held-out 평가셋 / fixed held-out evaluation set -------------------------
 
-def build_eval_set(questions: Sequence[dict], size: int = 1000, seed: int = 42) -> List[dict]:
+def build_eval_set(
+    questions: Sequence[dict],
+    size: int = 1000,
+    seed: int = 42,
+    exclude: Optional[Iterable[str]] = None,
+) -> List[dict]:
     """모든 run 에서 동일한 고정 평가셋 (Subtask 1.3).
 
     시드에 의존하지 않도록 qid 해시 순으로 정렬해 뽑는다. 조건 간 평가셋
@@ -191,8 +196,15 @@ def build_eval_set(questions: Sequence[dict], size: int = 1000, seed: int = 42) 
     A fixed held-out set identical across every run, drawn from the questions
     allocated to clients and excluded from training by split_train_eval.
     Selection is by qid-hash order, deliberately independent of the run seed.
+
+    exclude 는 **val(게이트 표본)** 의 qid 다. 빼지 않으면 test 와 24 개가 겹친다
+    (실측; 둘을 같은 80,720 개에서 독립적으로 뽑으므로 기대 겹침 24.8). 실질적
+    누출은 없지만 - 결과를 내는 모델은 test 를 학습하지 않는다 - "세 집합이
+    완전히 분리됐나" 에 답할 수 있어야 한다.
     """
-    ordered = sorted(questions, key=lambda q: hashlib.sha1((str(seed) + q["qid"]).encode()).hexdigest())
+    blocked = set(exclude or ())
+    pool = [q for q in questions if q["qid"] not in blocked]
+    ordered = sorted(pool, key=lambda q: hashlib.sha1((str(seed) + q["qid"]).encode()).hexdigest())
     return ordered[:size]
 
 

@@ -162,7 +162,28 @@ train:
 federated:
   strategy: fedavg
   participation: 1.0                  # full participation
-  simulation: true                    # Flower simulation mode
+  simulation: true                    # 시뮬레이션 모드 (실제 네트워크 없음)
+
+  # flower    : Flower 의 Ray 기반 시뮬레이션. **이 설계에서는 동작하지 않는다** -
+  #             아래 이유를 참고. 선택하면 시작 전에 설명과 함께 거부한다.
+  # inprocess : 동일한 집계/기록 코드를 순차 루프로 도는 백엔드. 본실험 기본값.
+  #
+  # Ray 시뮬레이션은 클라이언트를 **독립 프로세스(액터)** 로 띄우고 객체를 직렬화해
+  # 보낸다. 이 설계는 의도적으로 그 반대를 택했다:
+  #   - 135M 모델 인스턴스를 하나만 두고 어댑터만 갈아끼운다 (8 개 복사 = 메모리 한계)
+  #   - 옵티마이저 상태를 ClientState 에 담아 **부모 프로세스 dict** 에 유지한다
+  #     (작은 K 에서 AdamW 를 매 라운드 새로 만들면 영구 워밍업이 되어 K 의 효과와
+  #      옵티마이저 재시작의 효과가 섞인다)
+  # 액터는 부모의 dict 에 닿을 수 없으므로 두 구조는 양립하지 않는다.
+  # 실측 실패: TypeError: cannot pickle 'itertools.cycle' object
+  #   (LocalTrainer 의 순환 iterator, build_dataloader 의 lambda collate_fn,
+  #    그리고 위의 상태 위치 - 세 가지가 전부 직렬화를 막는다)
+  #
+  # 측정에는 영향이 없다: 두 백엔드가 같은 aggregate_round() 와 같은
+  # RoundRecorder 를 호출하고, 전원 참여(participation 1.0)이므로 클라이언트를
+  # 순차로 도는 것과 병렬로 도는 것의 결과가 같다. 백엔드는 모든 run 의
+  # 메타데이터에 기록된다.
+  backend: inprocess
 
 # --- Subtask 1.3: measurement protocol -------------------------------------
 eval:
