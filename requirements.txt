@@ -1,26 +1,40 @@
+# Week 1 의 게이트가 실제로 통과한 환경. 버전을 고정하는 이유는 재현성이다 -
+# transformers 5.x 는 datasets 의 스크립트 로딩을 제거했고(wiki_dpr 을 parquet
+# 미러로 바꾼 이유), sentence-transformers 6.x 는 임베딩 차원 API 이름을 바꿨다.
+# 범위로 두면 몇 달 뒤 clone 이 다른 코드로 돌아간다.
+#
+# GPU 인스턴스로 옮길 때: torch 는 아래 핀을 쓰지 말고 그 머신의 CUDA 에 맞는
+# 빌드를 설치할 것. 로컬 핀은 cu130 빌드이고 드라이버가 다르면 안 올라온다.
+#   pip install -r requirements.txt --no-deps 로 torch 를 제외하거나
+#   Deep Learning AMI 처럼 torch 가 이미 있는 이미지를 쓰는 쪽이 안전하다.
+
 # --- core training / federated ---
-torch
-transformers
-peft
-accelerate
-flwr[simulation]
+torch==2.14.0
+transformers==5.17.0
+peft==0.21.1
+accelerate==1.15.0
+flwr[simulation]==1.39.0
 
 # --- retrieval ---
-sentence-transformers
-qdrant-client
-rank_bm25
-scikit-learn
+sentence-transformers==6.1.0
+qdrant-client==1.19.1
+rank_bm25==0.2.2
+scikit-learn==1.9.1
 
 # --- data ---
-datasets
-numpy
-pandas
-pyyaml
-tqdm
+datasets==5.0.1
+pyarrow==25.0.1          # parquet 컬럼 투영 (스캔이 바이트의 90.6 % 를 절약)
+numpy==2.4.6
+pandas==3.0.6
+pyyaml==6.0.3
+tqdm==4.70.1
 
 # --- analysis / reporting ---
-matplotlib
-scipy
+matplotlib==3.11.2
+scipy==1.17.1
+
+# --- report export (optional) ---
+python-docx==1.2.0       # scripts/md2docx.py
 
 # --- test ---
-pytest
+pytest==9.1.1

@@ -1,0 +1,59 @@
+{
+  "name": "capability_headroom",
+  "passed": true,
+  "action": "proceed with the planned checkpoint (headroom 18.40 F1 >= 5.0)",
+  "detail": {
+    "f1_gold": 19.570512820512818,
+    "f1_random": 1.1666666666666665,
+    "gap": 18.40384615384615,
+    "min_gap": 5.0,
+    "model": "HuggingFaceTB/SmolLM2-135M-Instruct",
+    "n_shots": 2,
+    "n_questions": 100,
+    "gold_context": {
+      "f1": 19.570512820512818,
+      "em": 15.0,
+      "n": 100
+    },
+    "random_context": {
+      "f1": 1.1666666666666665,
+      "em": 0.0,
+      "n": 100
+    },
+    "sample_predictions": [
+      {
+        "answers": [
+          "Uranus"
+        ],
+        "prediction": "Context:"
+      },
+      {
+        "answers": [
+          "L Lawliet"
+        ],
+        "prediction": "Context:"
+      },
+      {
+        "answers": [
+          "John Richard Schneider"
+        ],
+        "prediction": ""
+      },
+      {
+        "answers": [
+          "1 World Trade Center",
+          "One World Trade Center",
+          "Freedom Tower",
+          "1 WTC"
+        ],
+        "prediction": "Context:"
+      },
+      {
+        "answers": [
+          "October 17, 2017"
+        ],
+        "prediction": "2010"
+      }
+    ]
+  }
+}

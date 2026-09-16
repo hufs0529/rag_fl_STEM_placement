@@ -1,0 +1,48 @@
+{
+  "train": {
+    "local_steps_per_round": 32,
+    "total_local_steps": 1892,
+    "rounds": 59
+  },
+  "source": "gate3_local_step_calibration (decision re-derived from the recorded measurement)",
+  "scale": {
+    "questions_per_client": 10090,
+    "effective_batch": 8,
+    "passes_over_client_data": 1.5,
+    "probe_total_local_steps": 188,
+    "probe_questions_per_client": 250
+  },
+  "selection": "declared, then verified against the measured curves",
+  "evidence_round1": {
+    "divergence_by_k": {
+      "4": 0.509739427234656,
+      "8": 0.38953028346603263,
+      "16": 0.3375573148601444,
+      "32": 0.3343079214272334,
+      "64": 0.4333951178543327
+    },
+    "absolute_spread_by_k": {
+      "4": 0.22363667526143421,
+      "8": 0.35784108393179603,
+      "16": 0.5890277592570965,
+      "32": 0.9641273429174471,
+      "64": 1.6042169086096205
+    },
+    "divergence_at_chosen_K": 0.3343079214272334,
+    "spread_ratio_vs_smallest_K": 4.31113251791268,
+    "rounds_by_K": {
+      "4": 473.0,
+      "8": 236.5,
+      "16": 118.25,
+      "32": 59.125,
+      "64": 29.5625
+    }
+  },
+  "divergence_by_k_mean_over_rounds": {
+    "4": 1.1456229121920478,
+    "8": 1.0655777983794865,
+    "16": 0.9999029351300956,
+    "32": 1.0052452087387658,
+    "64": 0.9776306511497627
+  }
+}

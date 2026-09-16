@@ -1,10 +1,23 @@
 # data artefacts (rebuilt by scripts/, never committed)
 data/
+# 실행 산출물은 하위 디렉터리까지 전부 제외한다.
+# `results/logs/*.json` 같은 한 단계 패턴은 results/logs/gates/ 안을 못 잡아서
+# 게이트 결과가 커밋되는 일이 있었다.
 results/cache/
 results/checkpoints/
-results/logs/*.jsonl
-results/logs/*.json
 results/figures/
+results/logs/
+
+# 단, 측정 요약 JSON 은 버전관리한다. 보고서가 인용하는 증거이고 수십 KB 다.
+# (캐시·체크포인트·그림은 위에서 계속 제외 - 그쪽은 수백 MB 이고 재생성된다)
+!results/logs/
+!results/logs/gates/
+!results/logs/gates/*.json
+!results/logs/week2/
+!results/logs/week2/*.json
+results/logs/**/*.npz
+results/logs/**/*.npy
+*.log
 qdrant_storage/
 
 # python
@@ -19,3 +32,28 @@ venv/
 wandb/
 .env
 .claude/
+
+# Word 산출물은 마크다운에서 재생성한다 (scripts/md2docx.py)
+*.docx
+
+# 실행 부산물 - 소스가 아니다. 완료 표지, PID, 감시 스크립트, 로그.
+# 같이 커밋하면 브랜치를 옮길 때마다 충돌하고, 어느 실행의 결과인지도 모호해진다.
+*.pid
+*_done.txt
+*_watch.sh
+
+# 전송용 아카이브 - 데이터에서 다시 묶으면 된다
+*.tar.gz
+*.zip
+
+# 에디터 / OS
+.vscode/
+.idea/
+.DS_Store
+
+# 루트에 떨어진 배열·모델 산출물 (data/ · results/ 밖으로 샌 경우를 막는다)
+*.npy
+*.npz
+*.pt
+*.safetensors
+*.egg-info/

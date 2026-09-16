@@ -5,7 +5,7 @@
 A 6-week STEM research placement project. This repository contains the full
 experimental pipeline, the analysis code and the reporting artefacts.
 
-> **You are on `main`.** Scaffolding only. The config system every later script shares, the directory layout, and this README. No experiment code yet.
+> **You are on `week1`, week 1 of 6.** The corpus scan and the three pilot gates that fix the remaining free parameters before any full run is spent.
 > The [branch map](#4-branch-map-one-branch-per-week) shows what each branch adds;
 > `week6` carries everything.
 
@@ -193,6 +193,19 @@ Every module carries a bilingual docstring naming the **subtask number** from
 the plan that it implements, so the code and the proposal stay traceable to each
 other.
 
+### Where the design lives in the code
+
+The parts of the design that are easiest to get wrong are enforced rather than
+documented. On this branch:
+
+| Design commitment | Enforced by |
+|---|---|
+| Exactly three passages, one common pool; depth is the only difference | `src/selection.py` + `tests/test_selection.py` |
+| `d = 3` reorders but never promotes | `promotion_rate == 0` asserted in `tests/test_selection.py` and in gate (ii) |
+| A flat recall curve is a failure, not a pass | `monotonicity_decision()` — no treatment axis means no experiment |
+
+The remaining commitments are enforced by code that arrives on later branches — see the branch map.
+
 ---
 
 ## 4. Branch map (one branch per week)
@@ -202,8 +215,8 @@ self-contained and builds on the previous one; `week6` contains everything.
 
 | Branch | Plan subtask | Deliverable | On this branch |
 |---|---|---|---|
-| **`main`** | — | Scaffolding: config system, layout, requirements, this README | **you are here** |
-| `week1` | 1.1 / 1.2 | NQ + `psgs_w100` scan, metrics, prompting, **the three pilot gates** | later |
+| `main` | — | Scaffolding: config system, layout, requirements, this README | included |
+| **`week1`** | 1.1 / 1.2 | NQ + `psgs_w100` scan, metrics, prompting, **the three pilot gates** — [runbook](docs/week1.md) | **you are here** |
 | `week2` | 1.1 / 1.2 | 200k corpus with hard negatives, topic partition, Qdrant, **retrieval cache** | later |
 | `week3` | 1.2 | Flower + PEFT federated pipeline, loss masking, cost/recall/drift logging | later |
 | `week4` | 1.3 | The 20 main runs at a fixed communication budget | later |
@@ -214,7 +227,7 @@ self-contained and builds on the previous one; `week6` contains everything.
 git log --oneline --graph main week1 week2 week3 week4 week5 week6
 ```
 
-Each week's branch adds a runbook under `docs/`; none exist yet on `main`.
+Runbooks present on this branch: `docs/week1.md`. The later ones arrive with their branches.
 
 ---
 
@@ -225,12 +238,12 @@ python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-Heavy dependencies (`torch`, `transformers`, `peft`, `flwr`, `sentence-transformers`, `qdrant-client`) are not needed on this branch yet. The pure-logic modules — metrics, passage selection, partitioning, the
+Heavy dependencies (`torch`, `transformers`, `peft`, `flwr`, `sentence-transformers`, `qdrant-client`) are needed from Week 1's gates onward. The pure-logic modules — metrics, passage selection, partitioning, the
 cost model, curve interpolation — depend only on `numpy`/`pyyaml` and their
 tests run without a GPU:
 
 ```bash
-pytest -q                                # 5 tests on this branch
+pytest -q                                # 159 tests on this branch
 pytest -q -m "not network and not slow"
 ```
 
@@ -247,17 +260,32 @@ python scripts/<any_script>.py --config configs/experiment_config.yaml
 ## 6. What you can run here
 
 ```bash
-pytest -q                     # config loader and overlay merging
+# Subtask 1.1 — find answer-bearing passages, confirm the usable-question count
+python scripts/scan_corpus.py --sample-fraction 0.05   # week-1 estimate
+python scripts/scan_corpus.py --sample-fraction 1.0    # the full single pass
+
+# Subtask 1.2 — the three gates, in order
+python scripts/run_week1_gates.py
+python scripts/run_week1_gates.py --dev --stop-on-fail
 ```
 
-There is nothing to execute on this branch yet — the first runnable step is the
-`psgs_w100` scan on `week1`.
+The gate scripts exit non-zero on failure, so a **NO-GO is visible to a shell
+loop**, not just to a reader. `run_week1_gates.py` writes the combined verdict to
+`results/logs/gates/week1_summary.json`.
 
 ---
 
 ## 7. Outputs
 
-Nothing is produced on this branch yet — the first artefacts arrive with `week1`'s corpus scan.
+| Artefact | Contents |
+|---|---|
+| `data/gold_by_qid.json`, `data/gold_passages.jsonl` | answer-bearing passages found by the scan |
+| `data/questions_usable.jsonl` | questions with at least one gold passage |
+| `results/logs/gates/gate{1,2,3}_*.json` | each gate's decision and its stated failure action |
+| `results/logs/gates/calibrated_schedule.json` | **K, S and R** — read by the Week 3/4 run scripts |
+| `results/logs/gates/week1_summary.json` | the combined GO / NO-GO |
+
+Everything under `data/`, `results/` and generated reports is gitignored: the scripts rebuild it.
 
 ---
 
@@ -271,7 +299,10 @@ Carried through to the final report, not discovered at the end:
 * A fixed client partition (two allocations across the seeds).
 * Simulated clients — wall-clock and network behaviour are modelled, not measured on real links.
 * **Answer-string matching as a proxy for gold labels** [8]: a passage containing
-  the answer string is not necessarily supporting evidence.
+  the answer string is not necessarily supporting evidence. Gold additionally
+  requires question-term overlap, which removes 96.8% of the false positives the
+  bare criterion produces, but **biases the retained questions toward lexically
+  answerable ones**.
 * The cost model's assumptions (effective device throughput, amortisation of
   indexing) are stated explicitly and swept where they matter.
 

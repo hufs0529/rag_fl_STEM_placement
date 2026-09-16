@@ -1,0 +1,34 @@
+{
+  "scan": {
+    "passages_seen": 21015300,
+    "passages_with_answer": 634104,
+    "passages_capped_out": 14010174,
+    "passages_answer_string_only": 6370394,
+    "gold_pairs": 1130384,
+    "rejected_pairs": 5995664491,
+    "questions_covered": 84076,
+    "answer_free_seen": 6371022,
+    "random_sampled": 300000,
+    "sample_fraction": 1.0,
+    "gold_per_question_histogram": {
+      "6-20": 61170,
+      "2-5": 16151,
+      "1": 6755
+    }
+  },
+  "elapsed_seconds": 69359.36216139793,
+  "questions_total": 91535,
+  "usable_train": 80720,
+  "discarded_train": 7205,
+  "usable_validation": 3356,
+  "gold_passages_written": 634104,
+  "random_passages_written": 300000,
+  "random_pool_size_requested": 300000,
+  "extrapolation": {
+    "observed_usable": 84076,
+    "estimated_usable": 84076,
+    "coverage_rate": 0.9185120445731141
+  },
+  "expected_usable_in_plan": 60000,
+  "gold_min_question_overlap": 2
+}

@@ -15,20 +15,64 @@ run_name: main
 
 # --- Subtask 1.1: corpus / questions / partition ---------------------------
 data:
-  questions_dataset: nq_open           # 87,925 train / 3,610 validation
-  passage_dataset: wiki_dpr           # DPR Wikipedia split psgs_w100 (21M x 100 words)
-  passage_config: psgs_w100.nq.no_index
-  # 정답 문자열 포함(normalised containment)으로 gold 판정 - DPR top-k accuracy 기준 [8]
-  # Gold passages are identified by normalised answer-string containment,
-  # the standard top-k accuracy criterion of the dense-retrieval literature [8].
-  gold_match: normalised_containment
+  # datasets>=3 은 loading script 기반 데이터셋과 bare alias 를 더 이상 지원하지
+  # 않는다. 정본 `wiki_dpr` 은 로드 자체가 불가능하므로("Dataset scripts are no
+  # longer supported") parquet 미러를 쓴다. 미러의 id/title/text 는 psgs_w100 과
+  # 동일하고(첫 행 id=1, "Aaron"), 157 샤드 x 133,856 행 = 약 21.0M 으로 일치한다.
+  questions_dataset: google-research-datasets/nq_open   # 87,925 train / 3,610 validation
+  passage_dataset: kenhktsui/wiki_dpr_e5                # psgs_w100 parquet 미러 (21M x 100 words)
+  passage_config: null
+  # parquet | datasets  - datasets<3 환경에서 정본 wiki_dpr 을 쓰려면 datasets 로
+  passage_source: parquet
+  # 미러에 붙어 있는 e5 embedding 열은 읽지 않는다. 열 투영이 전송량의 90.6% 를
+  # 줄인다 (약 86GB -> 약 8GB). 쓰지도 않을 벡터를 받을 이유가 없다.
+  passage_columns: [id, title, text]
+  # gold 판정 2단계 (Subtask 1.1):
+  #   1) 정규화된 정답 문자열 포함 - DPR top-k accuracy 기준 [8]
+  #   2) 질문의 변별력 있는 내용어가 passage 와 N 개 이상 겹칠 것
+  # 2) 가 없으면 코퍼스 전역에서 98% 의 passage 가 누군가의 gold 가 된다
+  # (NQ 정답의 69% 가 한 토큰: "1950", "North", "25"). 실측상 N=2 가 거짓 양성의
+  # 96.8% 를 제거한다. 0 으로 두면 1단계만 쓰며, 진단 목적 외에는 권장하지 않는다.
+  gold_match: containment_and_question_overlap
+  gold_min_question_overlap: 2
   corpus_size: 200000
   hard_negatives_per_question: 5      # BM25, answer string 미포함만 채택 / answer-free only
   # 정답 포함 distractor 를 제외해야 false-positive recall 이 생기지 않는다.
   # Excluding answer-bearing distractors prevents false-positive recall.
   exclude_answer_bearing_negatives: true
-  eval_set_size: 1000                 # fixed held-out, identical across every run
-  eval_split: validation
+
+  # --- 코퍼스 예산 배분 ---------------------------------------------------
+  # 세 성분의 합이 corpus_size 를 넘지 않아야 한다. gold 가 예산을 다 먹으면
+  # random remainder 가 사라져 "모든 passage 가 누군가의 정답"인 코퍼스가 되고,
+  # 검색 난이도가 의도와 달라진다.
+  # 질문당 코퍼스에 넣을 gold 수 (스캔 상한 20 과 별개).
+  # 1 인 이유는 산술이다 - 실측 usable 질문이 80,720 개이므로:
+  #   80,720 x 2 + hard negative 4만 = 20.1만  > 20만  (remainder 가 사라짐)
+  #   80,720 x 1 + hard negative 4만 = 12.1만  -> remainder 7.9만  (맞음)
+  # 게이트 (ii) 의 프로브 코퍼스도 이 값을 읽는다. 여기서 2 로 두면 프로브가
+  # Week 2 코퍼스와 다른 난이도를 재게 된다.
+  gold_per_question_in_corpus: 1
+  random_pool_size: 300000            # 스캔 중 reservoir 로 모을 answer-free passage 수
+                                      # (메모리 ~200MB. 줄이면 remainder 다양성이 준다)
+
+  # --- BM25 hard negative 비용 상한 ---------------------------------------
+  # rank_bm25 는 순수 파이썬이라 비용이 (질문 수 x 후보 수) 로 곱해진다.
+  # 상한이 없으면 이 단계가 사실상 끝나지 않는다. 두 값을 키우면 negative 가
+  # 어려워져 처리 효과가 커질 수 있지만, 시간도 같은 비율로 는다.
+  hard_negative_questions: 8000       # BM25 를 돌릴 질문 수 상한
+  bm25_pool_size: 200000              # BM25 인덱스에 넣을 후보 passage 수 상한
+  # 고정 held-out 평가셋. 모든 run 에서 동일해야 조건 간 비교에 평가셋 분산이
+  # 섞이지 않는다 (experiment.eval_questions 가 qid 해시 순으로 뽑으므로 run seed 와 무관).
+  #
+  # **출처는 학습 질문이다.** NQ 의 validation split 이 아니라, 클라이언트에 배분된
+  # 질문에서 균등하게 떼어내고 학습 예제에서 제외한다(split_train_eval). 그렇게 하는
+  # 이유는 이 실험이 외부 벤치마크와 절대 점수를 비교하는 것이 아니라 d 조건 간
+  # 차이를 재는 것이고, 평가셋이 클라이언트 주제 분포와 같아야 하기 때문이다.
+  # validation split 으로 재면 주제 분포가 어긋나 조건 간 차이에 분할 운이 섞인다.
+  #
+  # (이전에 eval_split: validation 키가 있었지만 어떤 코드도 읽지 않았다. 설정이
+  #  동작과 다르면 설정을 믿은 사람이 틀리게 되므로 지웠다.)
+  eval_set_size: 1000
 
 partition:
   num_clients: 8
@@ -91,8 +135,13 @@ train:
   optimizer: adamw
   learning_rate: 2.0e-4
   weight_decay: 0.0
-  batch_size: 8
-  grad_accumulation: 1
+  # CPU 에서는 bfloat16 학습이 안 되므로 float32 로 돌아가고, logits 텐서가
+  # batch x seq x vocab x 4 바이트가 된다. batch 8 x 1024 x 49,152 = 1.61 GB 이고
+  # 역전파까지 약 4.8 GB - 실측으로 7.2 GB 까지 올라가 OOM 킬러에 죽었다.
+  # batch 2 x 누적 4 는 **유효 배치 8 을 그대로 유지**하면서 피크를 1.2 GB 로 낮춘다.
+  # GPU 로 옮기면 batch_size 8 / grad_accumulation 1 로 되돌려도 된다.
+  batch_size: 2
+  grad_accumulation: 4               # 유효 배치 = batch_size x grad_accumulation = 8
   max_grad_norm: 1.0
   # Subtask 1.2 (iii) 에서 확정된다. 여기 값은 gate 3 결과로 덮어쓴다.
   # Fixed by gate 3 (Subtask 1.2 iii); these are placeholders it overwrites.
@@ -129,18 +178,45 @@ eval:
 gates:
   headroom:
     n_questions: 300
+    # 학습 전 모델은 "짧은 추출형 답"이라는 출력 형식을 모른다(실측: 빈 문자열이나
+    # 컨텍스트 이어쓰기를 뱉어 F1 ~1). 시연으로 형식만 알려주고 **맥락 활용 능력**을
+    # 분리해 잰다. 0 으로 두면 형식 미숙지가 헤드룸 부족으로 오진된다.
+    n_shots: 2
     min_f1_gap: 5.0                   # gap < ~5 F1 -> escalate to a larger checkpoint
     fallback_model: HuggingFaceTB/SmolLM2-360M-Instruct
   monotonicity:
     n_questions: 2000
     metric: gold_recall_at_3
+    # 처리가 실제로 일할 수 있는 질문의 최소 비율.
+    # 정답지가 이미 상위 3개 안에 있거나(already) 후보 풀 밖에 있으면
+    # (out_of_pool) 네 조건이 같은 passage 를 고른다 - 효과가 0 이다.
+    # 그 둘을 뺀 recoverable 이 작으면 곡선이 올라도 효과가 희석되어
+    # 5 시드로는 관측되지 않는다.
+    min_recoverable: 0.10
   local_steps:
     candidate_K: [4, 8, 16, 32, 64]
     probe_rounds: 3
     # drift 가 없는 곳에서는 drift 를 줄이는 처리를 관측할 수 없다.
     # A treatment acting by reducing drift cannot be observed where drift is absent.
     min_divergence: 0.02
-    passes_over_client_data: 1.5      # sets S
+
+    # K 는 선언하고 게이트가 **검증**한다. 고르게 하지 않는 이유는 실측에서
+    # "기준을 넘는 최소 K" 규칙이 퇴화했기 때문이다: 다섯 K 의 divergence 가
+    # 0.33~0.51 로 기준 0.02 의 17~25 배여서, 규칙이 데이터와 무관하게 항상
+    # 후보 중 최솟값(4)을 반환했다.
+    #
+    # 32 를 고른 근거 (게이트 ③ 1 라운드, 교란 없는 측정):
+    #   정규화 divergence 가 U 자형이고 K=32 에서 최소(0.3343)를 지난다.
+    #   K=16(0.3376) -> K=32 는 거의 평평하고 K=64 에서 0.4334 로 반등한다.
+    #   즉 K=32 가 "추가 로컬 학습이 상대적 분화를 더 줄이지 못하는 경계"다.
+    #   절대 흩어짐은 0.9170 으로 K=4(0.1762)의 5.2 배 - drift 가 업데이트 크기
+    #   때문에 생긴 잡음과 분명히 구별된다.
+    #   R = S/K = 1,892/32 = 59 로 보간 해상도 1.7 % 를 확보한다.
+    # K=64 가 흩어짐은 2 배 크지만 반등이 1 라운드의 한 점에 의존하고 R 이 29 로
+    # 절반이 된다. 전환하려면 이 주석과 함께 근거를 갱신할 것.
+    chosen_K: 32
+    min_rounds: 20                    # R 이 이보다 작으면 보간 해상도가 5 % 를 넘는다
+    passes_over_client_data: 1.5      # sets S (클라이언트 데이터 통과 횟수)
 
 # --- Subtask 1.4: cost model ----------------------------------------------
 cost:

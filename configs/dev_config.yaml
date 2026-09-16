@@ -12,6 +12,10 @@ data:
   corpus_size: 2000
   hard_negatives_per_question: 2
   eval_set_size: 50
+  gold_per_question_in_corpus: 1
+  random_pool_size: 3000
+  hard_negative_questions: 200
+  bm25_pool_size: 3000
 
 partition:
   num_clients: 2

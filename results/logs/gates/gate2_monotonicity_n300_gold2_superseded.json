@@ -1,0 +1,31 @@
+{
+  "_note": "2026-10-03 실행. 질문 300개, gold 2/question, Week 2 gold 비중 미반영(8%). 설정 버그 및 프로브 구성 불일치로 대체됨. 기록용.",
+  "name": "depth_monotonicity",
+  "passed": true,
+  "action": "treatment axis confirmed (recall@3 gain 0.0133 from d=0 to d=50)",
+  "detail": {
+    "recall_by_depth": {"0": 0.7, "3": 0.7, "10": 0.71, "50": 0.7133333333333334},
+    "total_gain": 0.01333333333333342,
+    "violations": [],
+    "headroom": {
+      "n": 300, "already_at_top_k": 0.7, "recoverable": 0.11, "out_of_pool": 0.19,
+      "ceiling": 0.81, "counts": {"already": 210, "recoverable": 33, "out_of_pool": 57}
+    },
+    "min_recoverable": 0.1,
+    "recoverable_captured": 0.12121212121212199,
+    "n_questions": 300,
+    "probe_corpus": {"size": 25000, "gold": 571, "gold_per_question": 2,
+                     "answer_free_filler": 24429, "hard_negatives": 0},
+    "candidate_pool": 50,
+    "per_depth": {
+      "0":  {"gold_recall_at_3": 0.7,    "rank_change_rate": 0.0,    "promotion_rate": 0.0},
+      "3":  {"gold_recall_at_3": 0.7,    "rank_change_rate": 0.38,   "promotion_rate": 0.0},
+      "10": {"gold_recall_at_3": 0.71,   "rank_change_rate": 0.6278, "promotion_rate": 0.3944},
+      "50": {"gold_recall_at_3": 0.7133, "rank_change_rate": 0.68,   "promotion_rate": 0.4867}
+    },
+    "reranker_forward_passes": 15000,
+    "control_recall_delta": 0.0,
+    "paired_gain_recomputed": {"n": 300, "gained": 4, "lost": 0, "delta": 0.01333,
+                               "std_error": 0.00667, "z": 2.0, "separated_from_zero": true}
+  }
+}
