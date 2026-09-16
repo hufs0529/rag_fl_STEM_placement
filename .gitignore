@@ -1,0 +1,21 @@
+# data artefacts (rebuilt by scripts/, never committed)
+data/
+results/cache/
+results/checkpoints/
+results/logs/*.jsonl
+results/logs/*.json
+results/figures/
+qdrant_storage/
+
+# python
+__pycache__/
+*.pyc
+.venv/
+venv/
+.pytest_cache/
+.ipynb_checkpoints/
+
+# misc
+wandb/
+.env
+.claude/

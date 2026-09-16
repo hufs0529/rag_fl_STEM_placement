@@ -1,0 +1,52 @@
+# ============================================================================
+# 축소판 설정 - 파이프라인 리허설/테스트 전용 (Week 3, 계획서 "reduced-scale rehearsal").
+# Reduced-scale config for pipeline rehearsal and tests (Week 3).
+#
+# experiment_config.yaml 위에 덮어씌워 쓴다:
+#   load_config("configs/experiment_config.yaml", overlay="configs/dev_config.yaml")
+# ============================================================================
+
+run_name: dev
+
+data:
+  corpus_size: 2000
+  hard_negatives_per_question: 2
+  eval_set_size: 50
+
+partition:
+  num_clients: 2
+  clustering:
+    n_clusters: 16
+
+retrieval:
+  candidate_pool: 10
+
+treatment:
+  depths: [0, 10]
+  seeds: [1]
+
+model:
+  max_seq_length: 384
+  max_new_tokens: 16
+
+train:
+  batch_size: 2
+  local_steps_per_round: 4
+  total_local_steps: 24
+  rounds: 6
+
+eval:
+  round_schedule_dense_until: 6
+  round_schedule_sparse_every: 1
+
+gates:
+  headroom:
+    n_questions: 20
+  monotonicity:
+    n_questions: 50
+  local_steps:
+    candidate_K: [2, 4]
+    probe_rounds: 1
+
+cost:
+  tau_sweep_points: 5

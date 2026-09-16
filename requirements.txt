@@ -1,0 +1,26 @@
+# --- core training / federated ---
+torch
+transformers
+peft
+accelerate
+flwr[simulation]
+
+# --- retrieval ---
+sentence-transformers
+qdrant-client
+rank_bm25
+scikit-learn
+
+# --- data ---
+datasets
+numpy
+pandas
+pyyaml
+tqdm
+
+# --- analysis / reporting ---
+matplotlib
+scipy
+
+# --- test ---
+pytest

@@ -1,0 +1,161 @@
+# ============================================================================
+# Buying Back Communication with Retrieval Compute
+#   - 계획서 전체 설정 단일 소스 (Subtask 1.1 ~ 1.4)
+#   - Single source of truth for the whole plan (Subtask 1.1 - 1.4).
+#
+# 이 파일의 값은 "고정 배경 조건"과 "처리 변수"를 분리한다.
+# treatment.depths 만이 실험 축이며, 나머지는 모든 run에서 동일하다.
+#
+# Values here separate the fixed background conditions from the treatment.
+# treatment.depths is the ONLY experimental axis; everything else is held
+# identical across every run.
+# ============================================================================
+
+run_name: main
+
+# --- Subtask 1.1: corpus / questions / partition ---------------------------
+data:
+  questions_dataset: nq_open           # 87,925 train / 3,610 validation
+  passage_dataset: wiki_dpr           # DPR Wikipedia split psgs_w100 (21M x 100 words)
+  passage_config: psgs_w100.nq.no_index
+  # 정답 문자열 포함(normalised containment)으로 gold 판정 - DPR top-k accuracy 기준 [8]
+  # Gold passages are identified by normalised answer-string containment,
+  # the standard top-k accuracy criterion of the dense-retrieval literature [8].
+  gold_match: normalised_containment
+  corpus_size: 200000
+  hard_negatives_per_question: 5      # BM25, answer string 미포함만 채택 / answer-free only
+  # 정답 포함 distractor 를 제외해야 false-positive recall 이 생기지 않는다.
+  # Excluding answer-bearing distractors prevents false-positive recall.
+  exclude_answer_bearing_negatives: true
+  eval_set_size: 1000                 # fixed held-out, identical across every run
+  eval_split: validation
+
+partition:
+  num_clients: 8
+  strategy: topic_cluster             # equal-size, topic-disjoint (NOT Dirichlet)
+  equal_size: true
+  # 시드 5개에 파티션 2개를 배정 - 결과가 한 배정에 묶이지 않도록.
+  # Two partitions assigned across the seeds so the result is not tied to one allocation.
+  partition_seeds: [1001, 1002]
+  clustering:
+    algorithm: minibatch_kmeans
+    n_clusters: 256                   # topic clusters, then evenly allocated to 8 clients
+    batch_size: 4096
+
+# --- Subtask 1.2: retrieval stack ------------------------------------------
+retrieval:
+  embedding_model: BAAI/bge-small-en-v1.5
+  embedding_dim: 384
+  query_prefix: "Represent this sentence for searching relevant passages: "
+  candidate_pool: 50                  # 모든 depth 가 공유하는 공통 후보 풀 / common pool
+  top_k: 3                            # 프롬프트에 들어가는 passage 수 (모든 조건 동일)
+  vector_store: qdrant
+  qdrant_path: data/qdrant_storage    # local on-disk mode (per-client collections)
+  distance: cosine
+
+rerank:
+  model: cross-encoder/ms-marco-MiniLM-L-6-v2
+  max_length: 512
+  batch_size: 64
+
+# --- treatment axis --------------------------------------------------------
+treatment:
+  # d = 재순위를 매기는 dense 후보 수. d=0 은 reranking 없음(dense only).
+  # d=3 은 control: dense 가 이미 고른 3개를 재정렬만 한다(ordering effect 분리).
+  #
+  # d = number of dense candidates rescored. d=0 is dense retrieval, no reranking.
+  # d=3 is the control: it reorders the 3 passages dense retrieval already
+  # selected without promoting new ones, separating an ordering effect from a
+  # genuine retrieval-quality effect.
+  depths: [0, 3, 10, 50]
+  seeds: [1, 2, 3, 4, 5]
+
+# --- Subtask 1.2 / 1.3: model + federated training -------------------------
+model:
+  base_model: HuggingFaceTB/SmolLM2-135M-Instruct
+  max_seq_length: 1024
+  max_new_tokens: 32
+  dtype: bfloat16
+  # 통신되는 payload 는 fp16 으로 계산한다 (1.84 MB / client / direction).
+  # Payload is accounted at fp16 (1.84 MB per client per direction).
+  payload_dtype: float16
+
+lora:
+  r: 8
+  alpha: 16
+  dropout: 0.05
+  target_modules: [q_proj, k_proj, v_proj, o_proj]   # attention projections only
+  bias: none
+
+train:
+  optimizer: adamw
+  learning_rate: 2.0e-4
+  weight_decay: 0.0
+  batch_size: 8
+  grad_accumulation: 1
+  max_grad_norm: 1.0
+  # Subtask 1.2 (iii) 에서 확정된다. 여기 값은 gate 3 결과로 덮어쓴다.
+  # Fixed by gate 3 (Subtask 1.2 iii); these are placeholders it overwrites.
+  local_steps_per_round: null         # K
+  total_local_steps: null             # S  (1-2 passes over each client's data)
+  rounds: null                        # R = S / K
+  # 작은 K 에서 AdamW 가 warm-up 에 머무르지 않도록 optimiser state 를 라운드 간 유지.
+  # Optimiser state is carried across rounds so small K does not leave AdamW in warm-up.
+  persist_optimizer_state: true
+
+federated:
+  strategy: fedavg
+  participation: 1.0                  # full participation
+  simulation: true                    # Flower simulation mode
+
+# --- Subtask 1.3: measurement protocol -------------------------------------
+eval:
+  # 고정 통신 예산, early stopping 없음 - 같은 예산이 무엇을 사주는지로 비교한다.
+  # Fixed communication budget, no early stopping: conditions are compared on
+  # what that budget buys.
+  early_stopping: false
+  decoding: greedy
+  primary_metric: f1                  # EM recorded alongside
+  # 평가 컨텍스트는 모든 조건에서 d=0 으로 고정 - reranking 으로 "배운 것"만 분리.
+  # Evaluation context is held at d=0 for all conditions, isolating what the
+  # model learned from reranking rather than what better inference-time context supplies.
+  eval_depth: 0
+  # 곡선은 고정 라운드 스케줄에서 평가 (초반 촘촘, 후반 성김).
+  # Curves are evaluated on a fixed round schedule, dense early and sparse late.
+  round_schedule_dense_until: 10
+  round_schedule_sparse_every: 5
+
+# --- Subtask 1.2 pilot gates ----------------------------------------------
+gates:
+  headroom:
+    n_questions: 300
+    min_f1_gap: 5.0                   # gap < ~5 F1 -> escalate to a larger checkpoint
+    fallback_model: HuggingFaceTB/SmolLM2-360M-Instruct
+  monotonicity:
+    n_questions: 2000
+    metric: gold_recall_at_3
+  local_steps:
+    candidate_K: [4, 8, 16, 32, 64]
+    probe_rounds: 3
+    # drift 가 없는 곳에서는 drift 를 줄이는 처리를 관측할 수 없다.
+    # A treatment acting by reducing drift cannot be observed where drift is absent.
+    min_divergence: 0.02
+    passes_over_client_data: 1.5      # sets S
+
+# --- Subtask 1.4: cost model ----------------------------------------------
+cost:
+  # 2항 모델: 일회성 indexing + 쿼리당 반복 reranking.
+  # Two-term model: one-off indexing + recurring per-query reranking.
+  reranker_flops_per_pair: null       # measured in week 5 (scripts/measure_flops.py)
+  embed_flops_per_passage: null       # measured
+  device_throughput_flops: 1.0e12     # effective FLOP/s of the client accelerator
+  bandwidth_sweep_mbps: [1, 5, 10, 25, 50, 100, 250, 1000]
+  query_volume_sweep: [1.0e3, 1.0e4, 1.0e5, 1.0e6, 1.0e7]
+  tau_sweep_points: 25                # tau swept across the range the baseline attains
+
+paths:
+  data_dir: data
+  cache_dir: results/cache
+  log_dir: results/logs
+  figure_dir: results/figures
+  report_dir: reports
