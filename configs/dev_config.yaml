@@ -10,6 +10,11 @@ run_name: dev
 
 data:
   corpus_size: 2000
+  # 2,000 권 예산에 맞춘 질문 수. 산술:
+  #   gold 400(질문당 1) + hard negative 400(200질문 x 2) = 800  -> remainder 1,200
+  # corpus_size 만 줄이고 이걸 빼먹으면 실제 데이터에서 gold 54,129 > 2,000 으로
+  # build_corpus 가 멈춘다.
+  question_limit: 400
   hard_negatives_per_question: 2
   eval_set_size: 50
   gold_per_question_in_corpus: 1

@@ -73,3 +73,88 @@ def load_or_encode(
     tmp.replace(path)
     log(f"  cached corpus embeddings -> {path}")
     return vectors
+
+
+# 고정 경로 + 사이드카 지문 ----------------------------------------------------
+#
+# Week 2 는 임베딩을 data/corpus_embeddings.npy 한 곳에 두고 partition 과 indexing
+# 이 공유한다(비용 모델의 "일회성 indexing" 항). 그런데 존재 여부만 검사하면
+# **다른 코퍼스의 벡터를 그대로 재사용**한다. 실제로 축소 실행(2,000 권)의 벡터가
+# 남아 있는 상태에서 운영(200,000 권)을 돌리면, zip(passages, labels) 가 2,000 으로
+# 조용히 잘려 20 만 권 중 2 천 권만으로 분할이 만들어진다 - 오류도 없이.
+#
+# 그래서 벡터 옆에 지문을 남기고, 재사용 전에 대조한다.
+
+def _meta_path(path) -> Path:
+    p = Path(path)
+    return p.with_name(p.stem + ".meta.json")
+
+
+def load_or_encode_at(
+    path,
+    model_name: str,
+    passage_ids: Sequence[str],
+    texts: Sequence[str],
+    encode: Callable[[], np.ndarray],
+    log: Callable[[str], None] = print,
+) -> np.ndarray:
+    """고정 경로에 임베딩을 두고, 지문이 일치할 때만 재사용한다."""
+    import json
+
+    if len(passage_ids) != len(texts):
+        raise ValueError("passage_ids and texts must be the same length")
+    path = Path(path)
+    want = {
+        "model": model_name,
+        "n": len(passage_ids),
+        "digest": corpus_fingerprint(model_name, passage_ids, texts_digest(texts)),
+    }
+    meta = _meta_path(path)
+
+    if path.exists():
+        vectors = np.load(path)
+        have = None
+        if meta.exists():
+            try:
+                have = json.loads(meta.read_text())
+            except (OSError, ValueError):
+                have = None
+        if have == want and vectors.shape[0] == len(passage_ids):
+            log(f"  reusing cached embeddings {vectors.shape} <- {path}")
+            return vectors.astype(np.float32)
+        # 왜 못 쓰는지 밝힌다. "다시 임베딩합니다" 만 찍으면 왜 느린지 알 수 없다.
+        if have is None:
+            why = f"no fingerprint beside it ({meta.name} missing)"
+        elif have.get("n") != want["n"]:
+            why = f"it holds {have.get('n'):,} rows, this corpus has {want['n']:,}"
+        elif have.get("model") != want["model"]:
+            why = f"it was built with {have.get('model')}, now {want['model']}"
+        else:
+            why = "the corpus contents changed"
+        log(f"  cached embeddings at {path} cannot be reused: {why}; re-encoding")
+
+    vectors = np.asarray(encode(), dtype=np.float32)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.parent / (path.name + ".tmp")
+    with open(tmp, "wb") as fh:
+        np.save(fh, vectors)
+    tmp.replace(path)
+    meta.write_text(json.dumps(want, indent=2))
+    log(f"  embedded corpus -> {path} {vectors.shape}")
+    return vectors
+
+
+def verify_embeddings_match(path, passage_ids: Sequence[str], log=print) -> "np.ndarray":
+    """임베딩을 읽되 행 수가 passage 수와 맞는지 확인한다 (indexing 쪽에서 사용).
+
+    맞지 않으면 IndexError 가 나거나 - 더 나쁘게 - 조용히 잘린 결과가 나온다.
+    """
+    vectors = np.load(Path(path))
+    if vectors.shape[0] != len(passage_ids):
+        raise ValueError(
+            f"{path} holds {vectors.shape[0]:,} vectors but the corpus has "
+            f"{len(passage_ids):,} passages. These are embeddings of a different corpus "
+            "(a reduced-scale run leaves them behind). Delete the file and re-run "
+            "partition_clients.py, which rebuilds it."
+        )
+    return vectors
