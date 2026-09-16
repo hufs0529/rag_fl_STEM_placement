@@ -74,6 +74,13 @@ data:
   #  동작과 다르면 설정을 믿은 사람이 틀리게 되므로 지웠다.)
   eval_set_size: 1000
 
+  # 코퍼스에 넣을 질문 수 상한. null 이면 사용 가능 질문을 전부 쓴다.
+  # 축소 리허설(--dev)에서 corpus_size 만 줄이면 질문 수는 8만 개 그대로여서
+  # gold 가 예산을 초과하고 build_corpus 가 (정당하게) 멈춘다. 두 값은 함께
+  # 줄여야 한다 - 이 키가 그 역할이다.
+  #   gold(질문수 x gold_per_question) + hard negative <= corpus_size
+  question_limit: null
+
 partition:
   num_clients: 8
   strategy: topic_cluster             # equal-size, topic-disjoint (NOT Dirichlet)

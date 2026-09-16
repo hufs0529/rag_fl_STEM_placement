@@ -1,0 +1,16 @@
+{
+  "composition": {
+    "gold": 54129,
+    "hard_negatives": 37511,
+    "random_remainder": 108360,
+    "total": 200000,
+    "target_size": 200000,
+    "shortfall": 0,
+    "gold_per_question": 1,
+    "hard_negative_questions": 8000
+  },
+  "questions_before": 80720,
+  "questions_after": 80720,
+  "answer_bearing_negative_violations": 0,
+  "random_pool_available": 300000
+}

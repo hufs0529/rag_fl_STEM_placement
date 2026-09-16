@@ -1,0 +1,215 @@
+{
+  "partition_seed": 1002,
+  "elapsed_seconds": 3881.8239386081696,
+  "total_reranker_forward_passes": 3896800,
+  "clients": {
+    "0": {
+      "questions": 9742,
+      "cache": "results/cache/retrieval/client_00.npz",
+      "headroom": {
+        "n": 9742,
+        "already_at_top_k": 0.5252514884007391,
+        "recoverable": 0.2251077807431739,
+        "out_of_pool": 0.24964073085608704,
+        "ceiling": 0.7503592691439129,
+        "counts": {
+          "already": 5117,
+          "recoverable": 2193,
+          "out_of_pool": 2432
+        }
+      },
+      "gold_recall_at_pool": 0.7503592691439129,
+      "gold_recall_at_3": {
+        "0": 0.5252514884007391,
+        "3": 0.5252514884007391,
+        "10": 0.5592280845822213,
+        "50": 0.5655922808458222
+      },
+      "headroom_captured": 0.7537619699042408,
+      "recoverable_captured": 0.17920656634746923,
+      "rerank_seconds": 240.50626516342163
+    },
+    "1": {
+      "questions": 9742,
+      "cache": "results/cache/retrieval/client_01.npz",
+      "headroom": {
+        "n": 9742,
+        "already_at_top_k": 0.5004105933073291,
+        "recoverable": 0.23095873537261344,
+        "out_of_pool": 0.26863067132005747,
+        "ceiling": 0.7313693286799425,
+        "counts": {
+          "already": 4875,
+          "recoverable": 2250,
+          "out_of_pool": 2617
+        }
+      },
+      "gold_recall_at_pool": 0.7313693286799425,
+      "gold_recall_at_3": {
+        "0": 0.5004105933073291,
+        "3": 0.5004105933073291,
+        "10": 0.5279203448983781,
+        "50": 0.5397249024840896
+      },
+      "headroom_captured": 0.7379649122807018,
+      "recoverable_captured": 0.1702222222222225,
+      "rerank_seconds": 240.54873323440552
+    },
+    "2": {
+      "questions": 9742,
+      "cache": "results/cache/retrieval/client_02.npz",
+      "headroom": {
+        "n": 9742,
+        "already_at_top_k": 0.5486553069184972,
+        "recoverable": 0.18928351467871074,
+        "out_of_pool": 0.262061178402792,
+        "ceiling": 0.7379388215972079,
+        "counts": {
+          "already": 5345,
+          "recoverable": 1844,
+          "out_of_pool": 2553
+        }
+      },
+      "gold_recall_at_pool": 0.7379388215972079,
+      "gold_recall_at_3": {
+        "0": 0.5486553069184972,
+        "3": 0.5486553069184972,
+        "10": 0.5824266064463149,
+        "50": 0.5933073290905359
+      },
+      "headroom_captured": 0.8040061204618167,
+      "recoverable_captured": 0.2359002169197401,
+      "rerank_seconds": 247.4256889820099
+    },
+    "3": {
+      "questions": 9742,
+      "cache": "results/cache/retrieval/client_03.npz",
+      "headroom": {
+        "n": 9742,
+        "already_at_top_k": 0.48408950934099776,
+        "recoverable": 0.2167932662697598,
+        "out_of_pool": 0.29911722438924243,
+        "ceiling": 0.7008827756107575,
+        "counts": {
+          "already": 4716,
+          "recoverable": 2112,
+          "out_of_pool": 2914
+        }
+      },
+      "gold_recall_at_pool": 0.7008827756107575,
+      "gold_recall_at_3": {
+        "0": 0.48408950934099776,
+        "3": 0.48408950934099776,
+        "10": 0.510162184356395,
+        "50": 0.5149866557175118
+      },
+      "headroom_captured": 0.7347685998828354,
+      "recoverable_captured": 0.14251893939393923,
+      "rerank_seconds": 228.70694208145142
+    },
+    "4": {
+      "questions": 9742,
+      "cache": "results/cache/retrieval/client_04.npz",
+      "headroom": {
+        "n": 9742,
+        "already_at_top_k": 0.49271196879490864,
+        "recoverable": 0.2238760008211866,
+        "out_of_pool": 0.2834120303839047,
+        "ceiling": 0.7165879696160953,
+        "counts": {
+          "already": 4800,
+          "recoverable": 2181,
+          "out_of_pool": 2761
+        }
+      },
+      "gold_recall_at_pool": 0.7165879696160953,
+      "gold_recall_at_3": {
+        "0": 0.49271196879490864,
+        "3": 0.49271196879490864,
+        "10": 0.5277150482447136,
+        "50": 0.5367481010059536
+      },
+      "headroom_captured": 0.7490330898152127,
+      "recoverable_captured": 0.19669876203576345,
+      "rerank_seconds": 244.09079933166504
+    },
+    "5": {
+      "questions": 9742,
+      "cache": "results/cache/retrieval/client_05.npz",
+      "headroom": {
+        "n": 9742,
+        "already_at_top_k": 0.5262779716690618,
+        "recoverable": 0.22982960377745842,
+        "out_of_pool": 0.2438924245534798,
+        "ceiling": 0.7561075754465202,
+        "counts": {
+          "already": 5127,
+          "recoverable": 2239,
+          "out_of_pool": 2376
+        }
+      },
+      "gold_recall_at_pool": 0.7561075754465202,
+      "gold_recall_at_3": {
+        "0": 0.5262779716690618,
+        "3": 0.5262779716690618,
+        "10": 0.5609731061383699,
+        "50": 0.5710326421679327
+      },
+      "headroom_captured": 0.7552267173499865,
+      "recoverable_captured": 0.19472979008485963,
+      "rerank_seconds": 232.0688374042511
+    },
+    "6": {
+      "questions": 9742,
+      "cache": "results/cache/retrieval/client_06.npz",
+      "headroom": {
+        "n": 9742,
+        "already_at_top_k": 0.4709505235064668,
+        "recoverable": 0.2556969821391911,
+        "out_of_pool": 0.273352494354342,
+        "ceiling": 0.7266475056456579,
+        "counts": {
+          "already": 4588,
+          "recoverable": 2491,
+          "out_of_pool": 2663
+        }
+      },
+      "gold_recall_at_pool": 0.7266475056456579,
+      "gold_recall_at_3": {
+        "0": 0.4709505235064668,
+        "3": 0.4709505235064668,
+        "10": 0.49343050708273456,
+        "50": 0.5017450215561486
+      },
+      "headroom_captured": 0.6904930074869332,
+      "recoverable_captured": 0.12043356081894832,
+      "rerank_seconds": 235.17296314239502
+    },
+    "7": {
+      "questions": 9742,
+      "cache": "results/cache/retrieval/client_07.npz",
+      "headroom": {
+        "n": 9742,
+        "already_at_top_k": 0.5054403613221105,
+        "recoverable": 0.22664750564565797,
+        "out_of_pool": 0.26791213303223155,
+        "ceiling": 0.7320878669677684,
+        "counts": {
+          "already": 4924,
+          "recoverable": 2208,
+          "out_of_pool": 2610
+        }
+      },
+      "gold_recall_at_pool": 0.7320878669677684,
+      "gold_recall_at_3": {
+        "0": 0.5054403613221105,
+        "3": 0.5054403613221105,
+        "10": 0.5324368712789982,
+        "50": 0.5407513857524122
+      },
+      "headroom_captured": 0.7386427369601795,
+      "recoverable_captured": 0.15579710144927528,
+      "rerank_seconds": 236.2684440612793
+    }
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "partition_seed": 1002,
+  "collections": {
+    "client_00": 25695,
+    "client_01": 28164,
+    "client_02": 24899,
+    "client_03": 23411,
+    "client_04": 22710,
+    "client_05": 26977,
+    "client_06": 23100,
+    "client_07": 25044
+  },
+  "qdrant_path": "data/qdrant_storage/seed_1002"
+}

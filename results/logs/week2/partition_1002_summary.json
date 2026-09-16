@@ -1,0 +1,25 @@
+{
+  "questions_per_client": [
+    9742,
+    9742,
+    9742,
+    9742,
+    9742,
+    9742,
+    9742,
+    9742
+  ],
+  "question_size_spread": 0,
+  "passages_per_client": [
+    25695,
+    28164,
+    24899,
+    23411,
+    22710,
+    26977,
+    23100,
+    25044
+  ],
+  "gold_reachable_fraction": 1.0,
+  "clients_are_topic_disjoint": true
+}
