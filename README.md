@@ -5,7 +5,7 @@
 A 6-week STEM research placement project. This repository contains the full
 experimental pipeline, the analysis code and the reporting artefacts.
 
-> **You are on `week3`, week 3 of 6.** The federated training loop (Flower + PEFT) and the rehearsal that exercises every path from cached retrieval to a logged learning curve.
+> **You are on `week4`, week 4 of 6.** Executes the 20 main runs on an identical communication budget, then verifies after the fact that only one axis actually varied.
 > The [branch map](#4-branch-map-one-branch-per-week) shows what each branch adds;
 > `week6` carries everything.
 
@@ -208,6 +208,7 @@ documented. On this branch:
 | Rounds come from a pilot, not a convention | `resolve_schedule()` raises without gate 3's artefact |
 | No early stopping | there is no stopping branch in `src/fl_runner.py` |
 | Evaluation context fixed at `d = 0` | `eval.eval_depth`, asserted equal across depths by the rehearsal |
+| All 20 runs spent an identical budget | `check_runs.py` compares every budget field post hoc |
 
 The remaining commitments are enforced by code that arrives on later branches — see the branch map.
 
@@ -223,8 +224,8 @@ self-contained and builds on the previous one; `week6` contains everything.
 | `main` | — | Scaffolding: config system, layout, requirements, this README | included |
 | `week1` | 1.1 / 1.2 | NQ + `psgs_w100` scan, metrics, prompting, **the three pilot gates** — [runbook](docs/week1.md) | included |
 | `week2` | 1.1 / 1.2 | 200k corpus with hard negatives, topic partition, Qdrant, **retrieval cache** — [runbook](docs/week2.md) | included |
-| **`week3`** | 1.2 | Flower + PEFT federated pipeline, loss masking, cost/recall/drift logging — [runbook](docs/week3.md) | **you are here** |
-| `week4` | 1.3 | The 20 main runs at a fixed communication budget | later |
+| `week3` | 1.2 | Flower + PEFT federated pipeline, loss masking, cost/recall/drift logging — [runbook](docs/week3.md) | included |
+| **`week4`** | 1.3 | The 20 main runs at a fixed communication budget — [runbook](docs/week4.md) | **you are here** |
 | `week5` | 1.4 | τ-sweep interpolation, two-term cost model, break-even surface, diagnostics | later |
 | `week6` | 1.4 | Final report, presentation, limitations, release notes | later |
 
@@ -232,7 +233,7 @@ self-contained and builds on the previous one; `week6` contains everything.
 git log --oneline --graph main week1 week2 week3 week4 week5 week6
 ```
 
-Runbooks present on this branch: `docs/week1.md`, `docs/week2.md`, `docs/week3.md`. The later ones arrive with their branches.
+Runbooks present on this branch: `docs/week1.md`, `docs/week2.md`, `docs/week3.md`, `docs/week4.md`. The later ones arrive with their branches.
 
 ---
 
@@ -248,7 +249,7 @@ cost model, curve interpolation — depend only on `numpy`/`pyyaml` and their
 tests run without a GPU:
 
 ```bash
-pytest -q                                # 235 tests on this branch
+pytest -q                                # 248 tests on this branch
 pytest -q -m "not network and not slow"
 ```
 
@@ -265,18 +266,16 @@ python scripts/<any_script>.py --config configs/experiment_config.yaml
 ## 6. What you can run here
 
 ```bash
-# rehearse the wiring offline, no 21M-passage download needed
-python scripts/run_rehearsal.py --dev --synthetic
-
-# one real run, once week2's artefacts and gate 3's schedule exist
-python scripts/run_single_run.py --depth 10 --seed 1
-python scripts/run_single_run.py --depth 0 --seed 1 --backend inprocess
+python scripts/run_main_runs.py --dry-run     # show the matrix and what is pending
+python scripts/run_main_runs.py               # execute, skipping completed runs
+python scripts/check_runs.py                  # post-hoc integrity check
+python scripts/measure_flops.py               # cost-model inputs for week5
 ```
 
-The rehearsal asserts the two failure modes that would otherwise yield a
-plausible-looking result: the **treatment silently not applying**
-(`promotion_rate > 0` required at `d > 3`, `== 0` at `d ∈ {0, 3}`) and the
-**treatment leaking into evaluation** (eval recall identical across depths).
+Runs are ordered **seed outer, depth inner**, so an interrupted sweep still holds
+all four conditions for every finished seed. A run that raises is logged and the
+sweep continues. `check_runs.py` exits non-zero if the budget was not identical
+or if the treatment diagnostics do not behave as predicted.
 
 ---
 
@@ -284,9 +283,10 @@ plausible-looking result: the **treatment silently not applying**
 
 | Artefact | Contents |
 |---|---|
-| `results/logs/runs/d{d}_s{s}.jsonl` | per-round curve, cumulative bytes, drift, treatment diagnostics |
-| `results/logs/runs/d{d}_s{s}_summary.json` | budget, final scores, completion flag |
-| `results/logs/week3/rehearsal.json` | the rehearsal's pass/fail checks |
+| `results/logs/runs/*.jsonl` | 20 learning curves (4 depths × 5 seeds) |
+| `results/logs/week4/main_runs.json` | sweep report, failures, integrity |
+| `results/logs/week4/run_checks.json` | budget identity + treatment diagnostics |
+| `results/logs/week4/flops.json` | measured FLOPs and reranker throughput |
 
 Everything under `data/`, `results/` and generated reports is gitignored: the scripts rebuild it.
 
