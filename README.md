@@ -5,7 +5,7 @@
 A 6-week STEM research placement project. This repository contains the full
 experimental pipeline, the analysis code and the reporting artefacts.
 
-> **You are on `week4`, week 4 of 6.** Executes the 36 main runs on an identical communication budget, then verifies after the fact that only one axis actually varied.
+> **You are on `week5`, week 5 of 6.** Turns the 20 curves into an exchange rate: τ-swept interpolation, the two-term cost model, the break-even surface, and the mechanism check.
 > The [branch map](#4-branch-map-one-branch-per-week) shows what each branch adds;
 > `week6` carries everything.
 
@@ -113,11 +113,8 @@ topic range (intended) *and* making client dataset sizes unequal (an unintended
 source of averaging instability) — and it redraws under each seed, injecting
 partition variance into the very estimate the seeds are meant to stabilise.
 Client heterogeneity here is a **fixed background condition, not a factor**. Two
-equal-size topic-disjoint partitions are assigned across the 4 seeds so the
-result is not tied to one allocation. The seed count is **even by requirement**:
-seeds alternate between the two partitions, so an odd count would give one
-partition an extra run per depth and confound the depth effect with the
-allocation. Four seeds give each partition exactly two.
+equal-size topic-disjoint partitions are assigned across the 5 seeds so the
+result is not tied to one allocation.
 
 ### Two measurement problems, and how the design answers them
 
@@ -146,7 +143,7 @@ Cheap, run before any full experiment, each with an explicit failure action.
 Gate (iii) exists because **a treatment that acts by reducing drift cannot be
 observed where drift is absent.**
 
-### Measurement protocol (36 main runs = 9 depths × 4 seeds)
+### Measurement protocol (20 main runs = 4 depths × 5 seeds)
 
 * Identical communication budget per run, no early stopping.
 * **Answer F1** primary (continuous, interpolates stably), **EM** alongside.
@@ -220,7 +217,8 @@ documented. On this branch:
 | Rounds come from a pilot, not a convention | `resolve_schedule()` raises without gate 3's artefact |
 | No early stopping | there is no stopping branch in `src/fl_runner.py` |
 | Evaluation context fixed at `d = 0` | `eval.eval_depth`, asserted equal across depths by the rehearsal |
-| All 36 runs spent an identical budget | `check_runs.py` compares every budget field post hoc |
+| All 20 runs spent an identical budget | `check_runs.py` compares every budget field post hoc |
+| τ is swept; conditions that never reach it are not extrapolated | `tau_grid()` + `rounds_to_target()` returning `None` |
 
 The remaining commitments are enforced by code that arrives on later branches — see the branch map.
 
@@ -237,15 +235,15 @@ self-contained and builds on the previous one; `week6` contains everything.
 | `week1` | 1.1 / 1.2 | NQ + `psgs_w100` scan, metrics, prompting, **the three pilot gates** — [runbook](docs/week1.md) | included |
 | `week2` | 1.1 / 1.2 | 200k corpus with hard negatives, topic partition, Qdrant, **retrieval cache** — [runbook](docs/week2.md) | included |
 | `week3` | 1.2 | Flower + PEFT federated pipeline, loss masking, cost/recall/drift logging — [runbook](docs/week3.md) | included |
-| **`week4`** | 1.3 | The 36 main runs at a fixed communication budget — [runbook](docs/week4.md) | **you are here** |
-| `week5` | 1.4 | τ-sweep interpolation, two-term cost model, break-even surface, diagnostics | later |
+| `week4` | 1.3 | The 20 main runs at a fixed communication budget — [runbook](docs/week4.md) | included |
+| **`week5`** | 1.4 | τ-sweep interpolation, two-term cost model, break-even surface, diagnostics — [runbook](docs/week5.md) | **you are here** |
 | `week6` | 1.4 | Final report, presentation, limitations, release notes | later |
 
 ```bash
 git log --oneline --graph main week1 week2 week3 week4 week5 week6
 ```
 
-Runbooks present on this branch: `docs/week1.md`, `docs/week2.md`, `docs/week3.md`, `docs/week4.md`. The later ones arrive with their branches.
+Runbooks present on this branch: `docs/week1.md`, `docs/week2.md`, `docs/week3.md`, `docs/week4.md`, `docs/week5.md`. The later ones arrive with their branches.
 
 ---
 
@@ -261,7 +259,7 @@ cost model, curve interpolation — depend only on `numpy`/`pyyaml` and their
 tests run without a GPU:
 
 ```bash
-pytest -q                                # 266 tests on this branch
+pytest -q                                # 292 tests on this branch
 pytest -q -m "not network and not slow"
 ```
 
@@ -278,16 +276,13 @@ python scripts/<any_script>.py --config configs/experiment_config.yaml
 ## 6. What you can run here
 
 ```bash
-python scripts/run_main_runs.py --dry-run     # show the matrix and what is pending
-python scripts/run_main_runs.py               # execute, skipping completed runs
-python scripts/check_runs.py                  # post-hoc integrity check
-python scripts/measure_flops.py               # cost-model inputs for week5
+python scripts/analyze_exchange_rate.py
+python scripts/plot_results.py
 ```
 
-Runs are ordered **seed outer, depth inner**, so an interrupted sweep still holds
-all four conditions for every finished seed. A run that raises is logged and the
-sweep continues. `check_runs.py` exits non-zero if the budget was not identical
-or if the treatment diagnostics do not behave as predicted.
+Both read **only** `results/logs/` — the τ sweep and every cost assumption can be
+changed without retraining anything. `tests/test_analysis_pipeline.py` fabricates
+20 run logs and runs both scripts end to end, which is what verifies that claim.
 
 ---
 
@@ -295,10 +290,11 @@ or if the treatment diagnostics do not behave as predicted.
 
 | Artefact | Contents |
 |---|---|
-| `results/logs/runs/*.jsonl` | 36 learning curves (9 depths × 4 seeds) |
-| `results/logs/week4/main_runs.json` | sweep report, failures, integrity |
-| `results/logs/week4/run_checks.json` | budget identity + treatment diagnostics |
-| `results/logs/week4/flops.json` | measured FLOPs and reranker throughput |
+| `results/logs/analysis/exchange_rate.json` | τ sweep, saved bytes, exchange rate, break-even surface, mechanism verdict |
+| `results/figures/learning_curves.png` | mean ± SE curves, in rounds **and** in cumulative MB |
+| `results/figures/saving_vs_tau.png` | saving as a curve over τ — the verdict does not hinge on one τ |
+| `results/figures/break_even.png` | break-even bandwidth vs query volume |
+| `results/figures/mechanism.png` | treatment strength vs client-update divergence |
 
 Everything under `data/`, `results/` and generated reports is gitignored: the scripts rebuild it.
 
@@ -308,9 +304,7 @@ Everything under `data/`, `results/` and generated reports is gitignored: the sc
 
 Carried through to the final report, not discovered at the end:
 
-* 4 seeds — effect sizes and standard errors are reported, **not significance tests**.
-  Four was chosen over five because the seed count must be even to use both topic
-  partitions equally; the cost is a standard error about 12 % wider.
+* 5 seeds — effect sizes and standard errors are reported, **not significance tests**.
 * A single model scale (135M) and a single adapter rank.
 * A fixed round horizon; behaviour beyond the budget is not observed.
 * A fixed client partition (two allocations across the seeds).

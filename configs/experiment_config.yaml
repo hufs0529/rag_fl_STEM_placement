@@ -302,9 +302,12 @@ cost:
   # Two-term model: one-off indexing + recurring per-query reranking.
   reranker_flops_per_pair: null       # measured in week 5 (scripts/measure_flops.py)
   embed_flops_per_passage: null       # measured
-  device_throughput_flops: 1.0e12     # effective FLOP/s of the client accelerator
+  # NOTE: exponents carry an explicit sign. YAML 1.1 only resolves a float when
+  # the exponent is signed, so `1.0e12` would silently load as the STRING
+  # "1.0e12" and the cost model would multiply a string by a depth.
+  device_throughput_flops: 1.0e+12    # effective FLOP/s of the client accelerator
   bandwidth_sweep_mbps: [1, 5, 10, 25, 50, 100, 250, 1000]
-  query_volume_sweep: [1.0e3, 1.0e4, 1.0e5, 1.0e6, 1.0e7]
+  query_volume_sweep: [1.0e+3, 1.0e+4, 1.0e+5, 1.0e+6, 1.0e+7]
   tau_sweep_points: 25                # tau swept across the range the baseline attains
 
 paths:
