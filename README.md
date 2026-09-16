@@ -5,7 +5,7 @@
 A 6-week STEM research placement project. This repository contains the full
 experimental pipeline, the analysis code and the reporting artefacts.
 
-> **You are on `week5`, week 5 of 6.** Turns the 20 curves into an exchange rate: τ-swept interpolation, the two-term cost model, the break-even surface, and the mechanism check.
+> **You are on `week6`, week 6 of 6.** The final deliverables, and the full pipeline in one command. This branch carries all six weeks.
 > The [branch map](#4-branch-map-one-branch-per-week) shows what each branch adds;
 > `week6` carries everything.
 
@@ -17,25 +17,16 @@ Federated Learning (FL) lets several machines jointly fine-tune an LLM without
 sharing raw data, and its dominant cost is communication. Total communication is
 
 ```
-total bytes  =  R  x  N  x  (|A| + |B|)  x  bytes/param  x  2
-                ^     ^           ^                         ^
-                |     |           |                  upload + download
-                |     |           LoRA adapter payload: the element counts
-                |     |           of the two factors ADDED, not multiplied
+total bytes  =  R  x  N  x  |AB|  x  2
+                ^     ^      ^      ^
+                |     |      |      upload + download
+                |     |      LoRA adapter payload
                 |     number of clients
                 rounds required
 ```
 
-`|A| + |B|` is a sum, not a product: an adapter transmits both factor matrices,
-so its payload is their element counts added. At rank 8 over the attention
-projections of SmolLM2-135M that is 921,610 parameters, 1.84 MB at fp16 — a
-product would be a number with twelve digits. The code counts it as a sum
-(`count_trainable` sums `p.numel()` over trainable parameters) and this README
-previously wrote it `|AB|`, which reads as a product and drew exactly that
-question.
-
-The established levers — PEFT, quantisation, sparsification — all shrink the
-per-round payload. This project attacks the other factor, `R`, the
+The established levers — PEFT, quantisation, sparsification — all shrink `|AB|`,
+the **bytes per round**. This project attacks the other factor, `R`, the
 **rounds required**, from an unexpected direction: the quality of the retrieval
 that constructs each client's training inputs.
 
@@ -161,7 +152,7 @@ observed where drift is absent.**
 
 For a target accuracy `τ`, read off the round at which each depth first reaches
 `τ` by linear interpolation, and convert the difference into saved bytes via
-`R x N x (|A| + |B|) x bytes/param x 2`. Because the verdict would otherwise depend on the choice of
+`R x N x |AB| x 2`. Because the verdict would otherwise depend on the choice of
 `τ`, **`τ` is swept** across the range the baseline attains and the saving is
 reported as a curve; regions where a condition never reaches `τ` are reported as
 such rather than extrapolated.
@@ -219,8 +210,7 @@ documented. On this branch:
 | Evaluation context fixed at `d = 0` | `eval.eval_depth`, asserted equal across depths by the rehearsal |
 | All 20 runs spent an identical budget | `check_runs.py` compares every budget field post hoc |
 | τ is swept; conditions that never reach it are not extrapolated | `tau_grid()` + `rounds_to_target()` returning `None` |
-
-The remaining commitments are enforced by code that arrives on later branches — see the branch map.
+| Report numbers match the analysis | `reports/` is generated from the analysis JSON, never transcribed |
 
 ---
 
@@ -236,14 +226,14 @@ self-contained and builds on the previous one; `week6` contains everything.
 | `week2` | 1.1 / 1.2 | 200k corpus with hard negatives, topic partition, Qdrant, **retrieval cache** — [runbook](docs/week2.md) | included |
 | `week3` | 1.2 | Flower + PEFT federated pipeline, loss masking, cost/recall/drift logging — [runbook](docs/week3.md) | included |
 | `week4` | 1.3 | The 20 main runs at a fixed communication budget — [runbook](docs/week4.md) | included |
-| **`week5`** | 1.4 | τ-sweep interpolation, two-term cost model, break-even surface, diagnostics — [runbook](docs/week5.md) | **you are here** |
-| `week6` | 1.4 | Final report, presentation, limitations, release notes | later |
+| `week5` | 1.4 | τ-sweep interpolation, two-term cost model, break-even surface, diagnostics — [runbook](docs/week5.md) | included |
+| **`week6`** | 1.4 | Final report, presentation, limitations, release notes — [runbook](docs/week6.md) | **you are here** |
 
 ```bash
 git log --oneline --graph main week1 week2 week3 week4 week5 week6
 ```
 
-Runbooks present on this branch: `docs/week1.md`, `docs/week2.md`, `docs/week3.md`, `docs/week4.md`, `docs/week5.md`. The later ones arrive with their branches.
+Every runbook is present here: `docs/week1.md` … `docs/week6.md`.
 
 ---
 
@@ -259,7 +249,7 @@ cost model, curve interpolation — depend only on `numpy`/`pyyaml` and their
 tests run without a GPU:
 
 ```bash
-pytest -q                                # 305 tests on this branch
+pytest -q                                # 315 tests on this branch
 pytest -q -m "not network and not slow"
 ```
 
@@ -273,16 +263,31 @@ python scripts/<any_script>.py --config configs/experiment_config.yaml
 
 ---
 
-## 6. What you can run here
+## 6. Reproducing the whole thing
 
 ```bash
-python scripts/analyze_exchange_rate.py
-python scripts/plot_results.py
+bash scripts/run_all.sh            # weeks 1-6 end to end
+bash scripts/run_all.sh --dev      # reduced-scale smoke run
 ```
 
-Both read **only** `results/logs/` — the τ sweep and every cost assumption can be
-changed without retraining anything. `tests/test_analysis_pipeline.py` fabricates
-20 run logs and runs both scripts end to end, which is what verifies that claim.
+Or one week at a time:
+
+```bash
+python scripts/scan_corpus.py --sample-fraction 1.0   # week 1
+python scripts/run_week1_gates.py                     # week 1  -> GO / NO-GO
+python scripts/run_week2_pipeline.py                  # week 2  -> frozen artefact
+python scripts/run_rehearsal.py --dev --synthetic     # week 3  -> rehearsed pipeline
+python scripts/run_main_runs.py                       # week 4  -> 20 runs
+python scripts/check_runs.py                          # week 4  -> did only one axis vary?
+python scripts/measure_flops.py                       # week 4  -> cost inputs
+python scripts/analyze_exchange_rate.py               # week 5  -> exchange rate
+python scripts/plot_results.py                        # week 5  -> figures
+python scripts/make_report.py                         # week 6  -> report
+```
+
+`reports/final_report.md` and `reports/presentation.md` are **generated** from
+`results/logs/analysis/exchange_rate.json`, never transcribed — re-run
+`make_report.py` after any re-analysis.
 
 ---
 
@@ -290,11 +295,9 @@ changed without retraining anything. `tests/test_analysis_pipeline.py` fabricate
 
 | Artefact | Contents |
 |---|---|
-| `results/logs/analysis/exchange_rate.json` | τ sweep, saved bytes, exchange rate, break-even surface, mechanism verdict |
-| `results/figures/learning_curves.png` | mean ± SE curves, in rounds **and** in cumulative MB |
-| `results/figures/saving_vs_tau.png` | saving as a curve over τ — the verdict does not hinge on one τ |
-| `results/figures/break_even.png` | break-even bandwidth vs query volume |
-| `results/figures/mechanism.png` | treatment strength vs client-update divergence |
+| `reports/final_report.md` | generated report: result, exchange rate, break-even regime, limitations |
+| `reports/presentation.md` | seven-slide outline from the same JSON |
+| everything from weeks 1–5 | see the branch map above |
 
 Everything under `data/`, `results/` and generated reports is gitignored: the scripts rebuild it.
 
