@@ -5,7 +5,7 @@
 A 6-week STEM research placement project. This repository contains the full
 experimental pipeline, the analysis code and the reporting artefacts.
 
-> **You are on `week2`, week 2 of 6.** Builds the **frozen data artefact** — corpus, partition, indexes and the cached candidate pool — that every later week only reads.
+> **You are on `week3`, week 3 of 6.** The federated training loop (Flower + PEFT) and the rehearsal that exercises every path from cached retrieval to a logged learning curve.
 > The [branch map](#4-branch-map-one-branch-per-week) shows what each branch adds;
 > `week6` carries everything.
 
@@ -205,6 +205,9 @@ documented. On this branch:
 | A flat recall curve is a failure, not a pass | `monotonicity_decision()` — no treatment axis means no experiment |
 | Answer-bearing passages are never used as hard negatives | `verify_no_answer_bearing_negatives()`, non-zero exit on violation |
 | One common top-50 pool serves every depth | `src/retrieval_cache.py` — per-condition caches could drift apart |
+| Rounds come from a pilot, not a convention | `resolve_schedule()` raises without gate 3's artefact |
+| No early stopping | there is no stopping branch in `src/fl_runner.py` |
+| Evaluation context fixed at `d = 0` | `eval.eval_depth`, asserted equal across depths by the rehearsal |
 
 The remaining commitments are enforced by code that arrives on later branches — see the branch map.
 
@@ -219,8 +222,8 @@ self-contained and builds on the previous one; `week6` contains everything.
 |---|---|---|---|
 | `main` | — | Scaffolding: config system, layout, requirements, this README | included |
 | `week1` | 1.1 / 1.2 | NQ + `psgs_w100` scan, metrics, prompting, **the three pilot gates** — [runbook](docs/week1.md) | included |
-| **`week2`** | 1.1 / 1.2 | 200k corpus with hard negatives, topic partition, Qdrant, **retrieval cache** — [runbook](docs/week2.md) | **you are here** |
-| `week3` | 1.2 | Flower + PEFT federated pipeline, loss masking, cost/recall/drift logging | later |
+| `week2` | 1.1 / 1.2 | 200k corpus with hard negatives, topic partition, Qdrant, **retrieval cache** — [runbook](docs/week2.md) | included |
+| **`week3`** | 1.2 | Flower + PEFT federated pipeline, loss masking, cost/recall/drift logging — [runbook](docs/week3.md) | **you are here** |
 | `week4` | 1.3 | The 20 main runs at a fixed communication budget | later |
 | `week5` | 1.4 | τ-sweep interpolation, two-term cost model, break-even surface, diagnostics | later |
 | `week6` | 1.4 | Final report, presentation, limitations, release notes | later |
@@ -229,7 +232,7 @@ self-contained and builds on the previous one; `week6` contains everything.
 git log --oneline --graph main week1 week2 week3 week4 week5 week6
 ```
 
-Runbooks present on this branch: `docs/week1.md`, `docs/week2.md`. The later ones arrive with their branches.
+Runbooks present on this branch: `docs/week1.md`, `docs/week2.md`, `docs/week3.md`. The later ones arrive with their branches.
 
 ---
 
@@ -245,7 +248,7 @@ cost model, curve interpolation — depend only on `numpy`/`pyyaml` and their
 tests run without a GPU:
 
 ```bash
-pytest -q                                # 204 tests on this branch
+pytest -q                                # 235 tests on this branch
 pytest -q -m "not network and not slow"
 ```
 
@@ -262,21 +265,18 @@ python scripts/<any_script>.py --config configs/experiment_config.yaml
 ## 6. What you can run here
 
 ```bash
-python scripts/run_week2_pipeline.py          # corpus -> partition -> indexes -> cache
-python scripts/run_week2_pipeline.py --dev    # reduced-scale smoke test
+# rehearse the wiring offline, no 21M-passage download needed
+python scripts/run_rehearsal.py --dev --synthetic
+
+# one real run, once week2's artefacts and gate 3's schedule exist
+python scripts/run_single_run.py --depth 10 --seed 1
+python scripts/run_single_run.py --depth 0 --seed 1 --backend inprocess
 ```
 
-Or step by step:
-
-```bash
-python scripts/build_corpus.py
-python scripts/partition_clients.py --seed 1001
-python scripts/build_indexes.py --seed 1001
-python scripts/precompute_retrieval.py --seed 1001
-```
-
-Requires `week1`'s scan output. `build_corpus.py` exits non-zero if a single
-answer-bearing passage survived into the hard negatives.
+The rehearsal asserts the two failure modes that would otherwise yield a
+plausible-looking result: the **treatment silently not applying**
+(`promotion_rate > 0` required at `d > 3`, `== 0` at `d ∈ {0, 3}`) and the
+**treatment leaking into evaluation** (eval recall identical across depths).
 
 ---
 
@@ -284,12 +284,9 @@ answer-bearing passage survived into the hard negatives.
 
 | Artefact | Contents |
 |---|---|
-| `data/corpus.jsonl` | the 200k passages (gold + hard negatives + random remainder) |
-| `data/corpus_embeddings.npy` | frozen bge embeddings — clustering and indexing share one pass |
-| `data/partition_{1001,1002}.json` | two equal-size, topic-disjoint client allocations |
-| `data/qdrant_storage/seed_*/` | per-client collections |
-| `results/cache/retrieval/client_*.npz` | **the frozen retrieval artefact** — one top-50 pool per question |
-| `results/logs/week2/*.json` | corpus composition, partition summary, recall by depth |
+| `results/logs/runs/d{d}_s{s}.jsonl` | per-round curve, cumulative bytes, drift, treatment diagnostics |
+| `results/logs/runs/d{d}_s{s}_summary.json` | budget, final scores, completion flag |
+| `results/logs/week3/rehearsal.json` | the rehearsal's pass/fail checks |
 
 Everything under `data/`, `results/` and generated reports is gitignored: the scripts rebuild it.
 

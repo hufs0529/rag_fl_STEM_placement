@@ -1,8 +1,16 @@
 # data artefacts (rebuilt by scripts/, never committed)
-data/
+# `data/` 가 아니라 `data/*` 여야 한다 - 디렉터리째 제외하면 git 이 안쪽 파일을
+# 되살리지 못해서 아래 negation 이 무시된다.
+data/*
+# 단, val(게이트가 본 질문) 목록은 버전관리한다. 47 KB 이고, "설정을 정한 질문과
+# 최종 비교에 쓴 질문이 겹치지 않는다" 를 가리킬 수 있어야 한다.
+!data/split_val_qids.json
 # 실행 산출물은 하위 디렉터리까지 전부 제외한다.
 # `results/logs/*.json` 같은 한 단계 패턴은 results/logs/gates/ 안을 못 잡아서
 # 게이트 결과가 커밋되는 일이 있었다.
+# 축소 리허설 산출물은 전부 제외 (dev 오버레이가 여기로 쓴다)
+results/dev/
+
 results/cache/
 results/checkpoints/
 results/figures/

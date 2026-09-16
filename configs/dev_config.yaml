@@ -8,6 +8,17 @@
 
 run_name: dev
 
+# **축소 산출물은 별도 디렉터리에 쓴다.**
+# 이 섹션이 없던 동안 make_dev_artefacts 가 운영과 같은 data/ 에 써서,
+# 리허설 한 번이 Week 2 산출물(코퍼스 20만권, 분할, 검색 캐시)을 덮어썼다.
+# 리허설의 목적은 "네트워크 없이 배선만 점검" 인데 점검하다가 본 데이터를 지웠다.
+paths:
+  data_dir: data/dev
+  cache_dir: results/dev/cache
+  log_dir: results/dev/logs
+  figure_dir: results/dev/figures
+  report_dir: results/dev/reports
+
 data:
   corpus_size: 2000
   # 2,000 권 예산에 맞춘 질문 수. 산술:
@@ -43,6 +54,9 @@ train:
   local_steps_per_round: 4
   total_local_steps: 24
   rounds: 6
+
+federated:
+  backend: inprocess
 
 eval:
   round_schedule_dense_until: 6
