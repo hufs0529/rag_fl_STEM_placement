@@ -42,11 +42,22 @@ evaluation. The figures the Week 1-3 reports quote (F1 28.94, EM 21.90, 1.7400
 GB over 59 rounds) are all in it.
 
 It was not rebuilt into a `.jsonl`. The stdout carries everything the reports
-cite and nothing reads the file - Week 5 analyses the sixteen batch-8 runs, and
-`d10_s1` is not one of them - so a reconstruction would only risk a derived file
-being mistaken for a primary one. `promotion_rate`, `rank_change_rate`,
-`eval_gold_recall_at_3` and the exact byte counts were never printed and are
-gone; Week 4 measures all of them again at `d=10` across four seeds.
+cite, and nothing reads the file: every reader globs `results/logs/runs/*.jsonl`
+or names `results/logs/runs/{run}.jsonl` directly, so a reconstruction would only
+risk a derived file being mistaken for a primary one. `promotion_rate`,
+`rank_change_rate`, `eval_gold_recall_at_3` and the exact byte counts were never
+printed and are gone; Week 4 measures all of them again at `d=10` over four
+seeds.
+
+**The Week 3 file is not reused, and two different runs now share the name
+`d10_s1`.** Week 4's sweep runs its own depth 10, seed 1 and writes
+`results/logs/runs/d10_s1.jsonl` at batch 8 x accum 1; the Week 3 run was batch
+2 x accum 4 and lives only as `results/logs/week3/w3_d10_s1.log`. They do not
+collide - different directory, different extension, and the `w3_` prefix - but
+they do report different final F1 under the same name. 28.94 is the Week 3
+figure the Week 1-3 reports quote; whatever Week 4's `d10_s1` reports is the one
+Week 5 analyses, and the two are not comparable because the batch split
+differs.
 
 `.gitignore` now keeps `results/logs/week3/*.log` as well as `*.json` and
 `*.jsonl`, after the global `*.log` rule so the negation wins. Without that line
