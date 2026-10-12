@@ -3,7 +3,10 @@ from collections import Counter
 from pathlib import Path
 
 from src.config import Config
-from src.run_matrix import check_integrity, enumerate_runs, group_by_depth, is_complete, pending
+from src.logging_utils import JsonlLogger
+from src.run_matrix import (
+    check_integrity, enumerate_runs, group_by_depth, is_complete, load_curve, pending,
+)
 from src.config import load_config
 from src.experiment import RunSpec, partition_seed_for
 
@@ -152,3 +155,51 @@ def test_the_shipped_matrix_uses_both_topic_partitions_equally():
     assert len(seeds) % 2 == 0, f"시드 수가 홀수다: {seeds}"
     counts = Counter(partition_seed_for(s, cfg.partition.partition_seeds) for s in seeds)
     assert len(set(counts.values())) == 1, f"파티션이 고르지 않다: {dict(counts)}"
+
+
+def _append_attempt(tmp_path, name, last_round):
+    """한 번의 시도를 jsonl 에 **이어 붙인다** (실패 후 재실행을 흉내)."""
+    runs = tmp_path / "runs"
+    runs.mkdir(parents=True, exist_ok=True)
+    with (runs / f"{name}.jsonl").open("a") as fh:
+        fh.write(json.dumps({"event": "meta", "run": name, "rounds": 59}) + "\n")
+        for r in range(last_round + 1):
+            fh.write(json.dumps({
+                "event": "round", "round": r, "evaluated": True,
+                "cumulative_bytes": r * 1000, "f1": 10.0 + r, "em": 5.0 + r,
+            }) + "\n")
+
+
+def test_a_resumed_run_does_not_make_the_curve_go_backwards(tmp_path):
+    """append 로 두 시도가 쌓인 파일에서도 곡선은 라운드 순서로 단조여야 한다.
+
+    그대로 읽으면 0..3, 0..6 이 되어 rounds_to_target 이 되돌아간 라운드 0 을
+    목표 달성 지점으로 잡는다."""
+    cfg = _cfg(tmp_path)
+    spec = enumerate_runs(cfg)[0]
+    _append_attempt(tmp_path, spec.name, 3)       # 중단된 첫 시도
+    _append_attempt(tmp_path, spec.name, 6)       # 재실행
+    curve = load_curve(cfg, spec)
+    rounds = [p["round"] for p in curve]
+    assert rounds == sorted(set(rounds)) == list(range(7)), rounds
+    assert [p["f1"] for p in curve] == [10.0 + r for r in range(7)]
+
+
+def test_the_run_log_is_opened_fresh_so_a_retry_replaces_the_abandoned_attempt(tmp_path):
+    """fl_runner 는 fresh=True 로 열어 미완 기록을 남기지 않는다."""
+    path = tmp_path / "run.jsonl"
+    with JsonlLogger(path, {"run": "d0_s1"}) as logger:
+        logger.write({"event": "round", "round": 0})
+    with JsonlLogger(path, {"run": "d0_s1"}, fresh=True) as logger:
+        logger.write({"event": "round", "round": 0})
+    rows = [json.loads(line) for line in path.read_text().splitlines() if line.strip()]
+    assert sum(1 for r in rows if r.get("event") == "meta") == 1
+    assert sum(1 for r in rows if r.get("event") == "round") == 1
+
+
+def test_append_is_still_the_default_so_gate_logs_accumulate(tmp_path):
+    path = tmp_path / "gate.jsonl"
+    for _ in range(2):
+        with JsonlLogger(path) as logger:
+            logger.write({"event": "probe"})
+    assert len(path.read_text().strip().splitlines()) == 2

@@ -17,10 +17,18 @@ from typing import Any, Dict, Iterator, List
 class JsonlLogger:
     """append-only 라운드 로그. 한 줄 = 한 라운드(또는 한 이벤트)."""
 
-    def __init__(self, path: str, meta: Dict[str, Any] = None):
+    def __init__(self, path: str, meta: Dict[str, Any] = None, fresh: bool = False):
+        """fresh=True 면 기존 파일을 버리고 새로 쓴다.
+
+        기본은 append 다. 게이트 로그는 이어 붙이는 것이 맞지만, run 로그는
+        그렇지 않다: 실패한 run 이 재실행되면 한 파일에 두 번의 시도가 쌓여
+        라운드가 0..7, 0..59 로 되돌아간다. 곡선을 그 순서대로 읽으면 보간이
+        망가진다. 재실행 지점에 도달한 run 은 정의상 미완(완료된 run 은
+        건너뛴다)이므로 버려도 되는 기록이다.
+        """
         self.path = Path(path)
         self.path.parent.mkdir(parents=True, exist_ok=True)
-        self._fh = self.path.open("a")
+        self._fh = self.path.open("w" if fresh else "a")
         if meta is not None:
             self.write({"event": "meta", "timestamp": time.time(), **meta})
 

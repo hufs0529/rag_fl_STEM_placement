@@ -155,7 +155,10 @@ def run_experiment(
             top_k=cfg.retrieval.top_k,
         )
 
-    with JsonlLogger(path, meta) as logger:
+    # fresh=True: 여기 도달한 run 은 새 run 이거나, 실패하고 남은 미완 기록이다
+    # (완료된 run 은 run_main_runs 의 pending() 과 run_single_run 의 존재 검사에서
+    # 걸러진다). append 하면 한 파일에 두 시도가 쌓여 곡선이 되돌아간다.
+    with JsonlLogger(path, meta, fresh=True) as logger:
         recorder = RoundRecorder(logger, data.num_clients, payload, meta)
         initial = state_dict_to_numpy(get_trainable_state_dict(model))
 

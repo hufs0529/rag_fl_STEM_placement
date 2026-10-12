@@ -58,18 +58,24 @@ def pending(cfg, specs: Sequence[RunSpec]) -> List[RunSpec]:
 
 
 def load_curve(cfg, spec: RunSpec) -> List[dict]:
-    """한 run 의 학습 곡선: 평가된 라운드만, (round, bytes, f1, em)."""
+    """한 run 의 학습 곡선: 평가된 라운드만, (round, bytes, f1, em).
+
+    **라운드 번호로 묶고 나중 기록을 쓴다.** 파일 순서를 그대로 믿으면, 두 번의
+    시도가 쌓인 로그에서 곡선이 0..7, 0..59 로 되돌아가고 rounds_to_target 이
+    "라운드 0 에서 목표 달성" 같은 값을 낸다. fl_runner 는 이제 run 로그를 새로
+    열지만(fresh=True), 그 전에 쌓인 파일도 읽을 수 있어야 한다.
+    """
     path = Path(cfg.paths.log_dir) / "runs" / f"{spec.name}.jsonl"
-    return [
-        {
-            "round": r["round"],
-            "cumulative_bytes": r["cumulative_bytes"],
-            "f1": r["f1"],
-            "em": r["em"],
-        }
-        for r in read_jsonl(path)
-        if r.get("event") == "round" and r.get("evaluated")
-    ]
+    by_round: Dict[int, dict] = {}
+    for r in read_jsonl(path):
+        if r.get("event") == "round" and r.get("evaluated"):
+            by_round[r["round"]] = {
+                "round": r["round"],
+                "cumulative_bytes": r["cumulative_bytes"],
+                "f1": r["f1"],
+                "em": r["em"],
+            }
+    return [by_round[k] for k in sorted(by_round)]
 
 
 def check_integrity(cfg, specs: Sequence[RunSpec]) -> dict:

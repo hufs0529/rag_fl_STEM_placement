@@ -4,6 +4,12 @@
 # 로그만 보면 안 되는 이유: 라운드 기록은 jsonl 에 쌓이고 터미널에는 거의 안 나온다.
 # wall_clock_seconds 는 **누적**이므로 거기서 ETA 를 바로 뽑을 수 있다.
 #
+# Week 4 스윕(run_main_runs.py)은 run 을 서브프로세스로 띄우지 않고 같은
+# 프로세스에서 run_experiment 를 직접 부른다. 그래서 run_single_run.py 만
+# pgrep 하면 스윕 중에 "실행 중인 run 없음" 이 되고, 돌고 있는 run 이 **중단으로
+# 찍혀 그 jsonl 을 지우라고 안내**하게 된다. 두 진입점을 모두 찾고, 살아 있는지는
+# jsonl 의 수정 시각으로 확인한다.
+#
 #   bash scripts/run_status.sh
 #   watch -n 60 'bash ~/rag-fl/scripts/run_status.sh'
 set -u
@@ -17,9 +23,29 @@ if not paths:
     print("  results/logs/runs/ 에 run 이 없다")
     raise SystemExit(0)
 
-alive = subprocess.run(["pgrep", "-f", "scripts/run_single_run.py"],
-                       capture_output=True).returncode == 0
+import re, time
+
+PATTERN = r"scripts/(run_single_run|run_main_runs)\.py"
+alive = subprocess.run(["pgrep", "-f", PATTERN], capture_output=True).returncode == 0
+
+# 행렬 크기는 설정에서 읽는다(yaml 의존성 없이). 하드코딩하면 4x5 -> 4x4 처럼
+# 설계가 바뀔 때 조용히 틀린 추정을 낸다.
+def _matrix_size():
+    try:
+        txt = open("configs/experiment_config.yaml").read()
+    except OSError:
+        return 0
+    def n(key):
+        m = re.search(rf"^  {key}: \[([^\]]*)\]", txt, re.M)
+        return len([x for x in m.group(1).split(",") if x.strip()]) if m else 0
+    return n("depths") * n("seeds")
+
+MATRIX = _matrix_size()
+# 한 run 이 시작되면 meta 를 쓴 뒤 모델 적재와 라운드 0 평가 동안 jsonl 이
+# 조용하다. 그 침묵을 중단으로 오인하지 않을 만큼 넉넉한 창을 둔다.
+FRESH_SECONDS = 20 * 60
 stale = []
+per_run_minutes = []
 
 print(f"  {'run':<10} {'라운드':>9} {'경과':>8} {'ETA':>8} {'F1':>7} "
       f"{'promo':>6} {'rank':>6} {'drift':>7} {'bytes':>9}  상태")
@@ -70,9 +96,16 @@ for p in paths:
 
     # 프로세스가 없는데 summary 도 없으면 "진행" 이 아니라 중단이다.
     # 0/59 에 멈춘 run 을 진행으로 찍으면 죽은 것을 모른다.
+    #
+    # 스윕은 run 을 순서대로 돌리므로 프로세스가 살아 있어도 지금 돌고 있는 것은
+    # 하나다. 앞서 실패하고 넘어간 run 의 jsonl 은 남아 있으니, 프로세스가 살아
+    # 있다는 것만으로 전부 "진행" 이라 하면 실패한 run 을 못 본다. 파일이 최근에
+    # 쓰였는지로 구분한다.
+    fresh = (time.time() - os.path.getmtime(p)) < FRESH_SECONDS
     if summary:
         state = "완료"
-    elif alive:
+        per_run_minutes.append(summary["wall_clock_seconds"] / 60)
+    elif alive and fresh:
         state = "진행"
     else:
         state = "중단"
@@ -91,9 +124,19 @@ for p in paths:
           f"{fmt(last.get('drift_divergence'), 7)} "
           f"{last.get('cumulative_bytes', 0)/1e9:>8.2f}G  {state}")
     if summary:
-        print(f"    최종 F1 {summary['final']['f1']:.2f} EM {summary['final']['em']:.2f} "
-              f"| 총 {summary['wall_clock_seconds']/60:.1f}분 "
-              f"| 20회 추정 {summary['wall_clock_seconds']*20/3600:.1f}시간")
+        line = (f"    최종 F1 {summary['final']['f1']:.2f} EM {summary['final']['em']:.2f} "
+                f"| 총 {summary['wall_clock_seconds']/60:.1f}분")
+        if MATRIX:
+            line += f" | {MATRIX}회 추정 {summary['wall_clock_seconds']*MATRIX/3600:.1f}시간"
+        print(line)
+
+# 스윕 전체 진행률. run 하나하나보다 "29 시간 중 어디쯤인가" 가 밤샘 작업에서 알고 싶은 값이다.
+if MATRIX and per_run_minutes:
+    mean = sum(per_run_minutes) / len(per_run_minutes)
+    left = MATRIX - len(per_run_minutes)
+    print()
+    print(f"  스윕 {len(per_run_minutes)}/{MATRIX} 완료 | 평균 {mean:.1f}분/run "
+          f"| 남은 {left}회 약 {left * mean / 60:.1f}시간")
 
 if stale:
     print()
@@ -103,7 +146,7 @@ if stale:
 INNER
 
 echo
-RUN=$(pgrep -af "scripts/run_single_run.py" 2>/dev/null | grep -v grep | head -1 || true)
+RUN=$(pgrep -af "scripts/(run_single_run|run_main_runs)\.py" 2>/dev/null | grep -v grep | head -1 || true)
 if [ -n "${RUN:-}" ]; then
   PID=${RUN%% *}
   printf "  실행 중  pid %-7s 경과 %-9s CPU %-9s 메모리 %s\n" "$PID" \
@@ -113,7 +156,7 @@ else
   echo "  실행 중인 run 없음"
 fi
 
-for f in w3_*.log; do
+for f in week*.log w3_*.log w4_*.log; do
   [ -f "$f" ] || continue
   # grep -c 는 0 건일 때 "0" 을 찍고 exit 1 을 내므로 `|| echo 0` 을 붙이면
   # 출력이 "0\n0" 이 되어 [ 가 integer expected 로 터진다.
