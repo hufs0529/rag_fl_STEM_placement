@@ -146,23 +146,66 @@ if stale:
 INNER
 
 echo
-RUN=$(pgrep -af "scripts/(run_single_run|run_main_runs)\.py" 2>/dev/null | grep -v grep | head -1 || true)
-if [ -n "${RUN:-}" ]; then
-  PID=${RUN%% *}
-  printf "  실행 중  pid %-7s 경과 %-9s CPU %-9s 메모리 %s\n" "$PID" \
-    "$(ps -o etime= -p "$PID" | tr -d ' ')" "$(ps -o time= -p "$PID" | tr -d ' ')" \
-    "$(ps -o rss= -p "$PID" | awk '{printf "%.1fGB", $1/1048576}')"
+# head -1 로 하나만 보여주면 **중복 실행을 놓친다.** 두 스윕이 같은 jsonl 에
+# 쓰고 한 GPU 에 모델을 두 벌 올려 OOM 을 내는데, 표에는 정상처럼 보인다.
+# 실제로 그렇게 지나간 적이 있어서 전부 찍고 2 개 이상이면 경고한다.
+PIDS=$(pgrep -f "scripts/(run_single_run|run_main_runs)\.py" 2>/dev/null || true)
+if [ -n "${PIDS:-}" ]; then
+  N=$(echo "$PIDS" | wc -l | tr -d ' ')
+  for PID in $PIDS; do
+    printf "  실행 중  pid %-7s 경과 %-9s CPU %-9s 메모리 %s\n" "$PID" \
+      "$(ps -o etime= -p "$PID" 2>/dev/null | tr -d ' ')" \
+      "$(ps -o time= -p "$PID" 2>/dev/null | tr -d ' ')" \
+      "$(ps -o rss= -p "$PID" 2>/dev/null | awk '{printf "%.1fGB", $1/1048576}')"
+  done
+  if [ "$N" -gt 1 ]; then
+    echo "  ⚠ run 프로세스가 ${N} 개다. 같은 jsonl 에 동시에 쓰고 GPU 메모리를"
+    echo "    두 벌 쓴다. 전부 멈추고 results/logs/runs/ 를 비운 뒤 하나만 띄운다:"
+    echo "      pkill -f run_main_runs.py"
+  fi
 else
   echo "  실행 중인 run 없음"
 fi
 
+# GPU 를 쥐고 있는 프로세스. pkill 뒤에도 CUDA 컨텍스트를 놓지 않은 프로세스가
+# 남으면 새 스윕이 쓸 메모리가 없어 OOM 경고가 뜬다 - 표에는 "진행" 으로 보인다.
+if command -v nvidia-smi >/dev/null 2>&1; then
+  USED=$(nvidia-smi --query-gpu=memory.used,memory.total,utilization.gpu \
+         --format=csv,noheader,nounits 2>/dev/null | head -1)
+  GPU_PIDS=$(nvidia-smi --query-compute-apps=pid,used_memory \
+             --format=csv,noheader,nounits 2>/dev/null || true)
+  if [ -n "${USED:-}" ]; then
+    echo "  GPU  $(echo "$USED" | awk -F', ' '{printf "%.1f/%.1f GB  사용률 %s%%", $1/1024, $2/1024, $3}')"
+  fi
+  if [ -n "${GPU_PIDS:-}" ]; then
+    echo "$GPU_PIDS" | while IFS=, read -r gp gm; do
+      gp=$(echo "$gp" | tr -d ' '); gm=$(echo "$gm" | tr -d ' ')
+      MARK=""
+      echo "$PIDS" | grep -qx "$gp" || MARK="  ⚠ 스윕이 아닌 프로세스가 쥐고 있다"
+      printf "  GPU 점유  pid %-7s %.1f GB%s\n" "$gp" "$(echo "$gm" | awk '{print $1/1024}')" "$MARK"
+    done
+  fi
+fi
+
+# 경고와 오류를 가른다. PyTorch 의 캐싱 할당자는 큰 블록을 못 찾으면 `[W ...]`
+# 로 "memory allocation failed with OOM" 을 찍고 **캐시를 비워 재시도해 성공**
+# 한다. 그 줄의 "failed" 때문에 오류로 집계되면 29 시간 내내 "오류 1건" 이
+# 떠 있어, 나중에 생기는 진짜 오류를 가린다.
+#
+# grep -c 는 0 건일 때 "0" 을 찍고 exit 1 을 내므로 `|| echo 0` 을 붙이면
+# 출력이 "0\n0" 이 되어 [ 가 integer expected 로 터진다.
+ERRORS='Traceback|FAILED|RuntimeError|CUDA out of memory|Killed'
 for f in week*.log w3_*.log w4_*.log; do
   [ -f "$f" ] || continue
-  # grep -c 는 0 건일 때 "0" 을 찍고 exit 1 을 내므로 `|| echo 0` 을 붙이면
-  # 출력이 "0\n0" 이 되어 [ 가 integer expected 로 터진다.
-  N=$(grep -cE "Traceback|Error|failed" "$f" 2>/dev/null | head -1)
+  N=$(grep -cE "$ERRORS" "$f" 2>/dev/null | head -1)
   if [ "${N:-0}" -gt 0 ] 2>/dev/null; then
     echo "  ⚠ $f 에 오류 ${N}건:"
-    grep -E "Traceback|Error|failed" "$f" | tail -2 | sed 's/^/      /'
+    grep -E "$ERRORS" "$f" | tail -3 | sed 's/^/      /'
+  fi
+  # 할당자 경고는 건수만 알린다. 늘어나기만 하면 단편화가 심해지는 신호이고,
+  # 그때는 PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True 로 다시 띄운다.
+  W=$(grep -cE "^\[W.*(OOM|allocation)" "$f" 2>/dev/null | head -1)
+  if [ "${W:-0}" -gt 0 ] 2>/dev/null; then
+    echo "  · $f 할당자 경고 ${W}건 (캐시 비우고 재시도해 복구됨 - 정상)"
   fi
 done
