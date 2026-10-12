@@ -14,6 +14,29 @@ figure and is left as the record of what was planned then.
 
 ---
 
+## Before the sweep: clear `results/logs/runs/`
+
+Anything in `results/logs/runs/` with a `completed: true` summary is skipped, so
+a run left over from Week 3 or from a timing measurement silently becomes one of
+the sixteen. Week 3's verification run was trained at batch 2 x accum 4 and the
+sweep uses batch 8 x accum 1, so it must not be counted - but it must not be
+deleted either: `results/logs/runs/` is gitignored, so that file is the only copy
+of the artefact the Week 1-3 reports quote. Move it to `results/logs/week3/`,
+which is outside the sweep's scan path and is version-controlled.
+
+```bash
+mkdir -p results/logs/week3
+mv results/logs/runs/d10_s1*  results/logs/week3/    # keep: Week 3's evidence
+rm -f results/logs/runs/d0_s1*                       # discard: timing measurement
+ls results/logs/runs/                                # must be empty
+```
+
+The timing measurement is discarded rather than kept because it was launched with
+`--set` overrides before the manifest recorded the batch split, so `check_runs.py`
+reports its setting as unverifiable.
+
+---
+
 ## Run the sweep
 
 ```bash

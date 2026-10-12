@@ -23,6 +23,13 @@ results/logs/
 !results/logs/gates/*.json
 !results/logs/week2/
 !results/logs/week2/*.json
+# Week 3 의 검증 run 은 results/logs/runs/ 에 두면 안 된다. is_complete 가
+# summary 를 보고 완료로 판정하므로 Week 4 스윕이 그 run 을 건너뛰고, batch 2
+# 로 돈 run 이 16 회 중 하나로 섞인다. 그래서 week3/ 로 옮겨 보관한다.
+# 곡선은 .jsonl 이므로 *.json 패턴에 안 걸린다 - 따로 적어야 한다.
+!results/logs/week3/
+!results/logs/week3/*.json
+!results/logs/week3/*.jsonl
 results/logs/**/*.npz
 results/logs/**/*.npy
 *.log
