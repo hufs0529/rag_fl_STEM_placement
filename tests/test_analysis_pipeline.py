@@ -13,8 +13,16 @@ from pathlib import Path
 import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
-DEPTHS = [0, 3, 10, 50]
-SEEDS = [1, 2, 3, 4, 5]
+
+# 행렬은 **출하되는 설정에서** 읽는다. 하드코딩하면 설계가 바뀔 때(4 x 5 -> 4 x 4)
+# 가짜 로그는 5 시드를 쓰고 분석 스크립트는 설정대로 4 시드를 찾아, 테스트가
+# 분석 경로의 결함이 아닌 자기 상수 때문에 깨진다.
+sys.path.insert(0, str(ROOT))
+from src.config import load_config                                   # noqa: E402
+
+_CFG = load_config(str(ROOT / "configs" / "experiment_config.yaml"))
+DEPTHS = list(_CFG.treatment.depths)
+SEEDS = list(_CFG.treatment.seeds)
 PAYLOAD = 1_840_000
 CLIENTS = 8
 ROUNDS = 20
@@ -94,7 +102,7 @@ def test_analysis_runs_from_logs_alone_and_reports_a_saving(analysis_workspace):
 
     report = json.loads((log_dir / "analysis" / "exchange_rate.json").read_text())
     assert report["baseline_depth"] == 0
-    assert report["runs_per_depth"] == {"0": 5, "3": 5, "10": 5, "50": 5}
+    assert report["runs_per_depth"] == {str(d): len(SEEDS) for d in DEPTHS}
 
     # tau 스윕이 baseline 도달 구간 위에 있고, 단일 tau 에 의존하지 않는다
     assert len(report["tau_sweep"]) > 1
