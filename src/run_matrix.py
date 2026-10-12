@@ -1,14 +1,17 @@
-"""본실험 20 run 의 목록·상태·무결성 (Subtask 1.3).
+"""본실험 run 의 목록·상태·무결성 (Subtask 1.3).
 
-4 depth x 5 seed = 20 run. 각 run 은 **동일한 통신 예산**을 소모하며 early
+4 depth x 4 seed = 16 run. 각 run 은 **동일한 통신 예산**을 소모하며 early
 stopping 이 없다. 이 모듈은 세 가지를 담당한다:
 
-  1) 실행 목록 생성 (depth 를 바깥 루프로 두어, 중간에 멈춰도 시드별로
-     조건이 고르게 채워지도록)
+  1) 실행 목록 생성 (seed 를 바깥 루프로 두어, 중간에 멈춰도 시드별로
+     네 조건이 고르게 채워지도록)
   2) 재개(resume) - 이미 완료된 run 은 건너뛴다
-  3) 무결성 점검 - 20 run 이 정말 같은 조건에서 돌았는지 사후 검증
+  3) 무결성 점검 - 전 run 이 정말 같은 조건에서 돌았는지 사후 검증
 
-Enumeration, resumption and integrity checking for the 20 main runs.
+시드 수가 짝수인 이유는 configs/experiment_config.yaml 의 treatment.seeds
+주석에 있다 - 두 토픽 파티션을 고르게 쓰기 위해서다.
+
+Enumeration, resumption and integrity checking for the main runs.
 """
 
 from pathlib import Path
@@ -70,7 +73,7 @@ def load_curve(cfg, spec: RunSpec) -> List[dict]:
 
 
 def check_integrity(cfg, specs: Sequence[RunSpec]) -> dict:
-    """20 run 이 같은 조건이었는지 사후 검증 (Subtask 1.3).
+    """전 run 이 같은 조건이었는지 사후 검증 (Subtask 1.3).
 
     조건 간 비교가 성립하려면 다음이 모두 같아야 한다:
       - 라운드 수 R, 클라이언트 수 N, payload 크기 -> 통신 예산이 동일

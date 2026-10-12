@@ -119,7 +119,16 @@ treatment:
   # selected without promoting new ones, separating an ordering effect from a
   # genuine retrieval-quality effect.
   depths: [0, 3, 10, 50]
-  seeds: [1, 2, 3, 4, 5]
+  # 시드 수는 **짝수여야 한다.** partition_seed_for 가 시드를 두 토픽 파티션
+  # (1001/1002)에 번갈아 배정하므로, 홀수면 한쪽 파티션이 한 번 더 들어가
+  # depth 효과가 파티션 효과와 섞인다. 시드 5 개는 1001 x3 / 1002 x2 가 되고,
+  # 4 개는 2 x2 로 균형이 맞는다.
+  #
+  # The seed count must be even: partition_seed_for alternates seeds between
+  # the two topic partitions, so an odd count gives one partition an extra run
+  # and confounds the depth effect with the partition. Five seeds would be
+  # 1001 x3 / 1002 x2; four are 2 x 2.
+  seeds: [1, 2, 3, 4]
 
 # --- Subtask 1.2 / 1.3: model + federated training -------------------------
 model:

@@ -5,7 +5,7 @@
 A 6-week STEM research placement project. This repository contains the full
 experimental pipeline, the analysis code and the reporting artefacts.
 
-> **You are on `week4`, week 4 of 6.** Executes the 20 main runs on an identical communication budget, then verifies after the fact that only one axis actually varied.
+> **You are on `week4`, week 4 of 6.** Executes the 16 main runs on an identical communication budget, then verifies after the fact that only one axis actually varied.
 > The [branch map](#4-branch-map-one-branch-per-week) shows what each branch adds;
 > `week6` carries everything.
 
@@ -104,8 +104,11 @@ topic range (intended) *and* making client dataset sizes unequal (an unintended
 source of averaging instability) — and it redraws under each seed, injecting
 partition variance into the very estimate the seeds are meant to stabilise.
 Client heterogeneity here is a **fixed background condition, not a factor**. Two
-equal-size topic-disjoint partitions are assigned across the 5 seeds so the
-result is not tied to one allocation.
+equal-size topic-disjoint partitions are assigned across the 4 seeds so the
+result is not tied to one allocation. The seed count is **even by requirement**:
+seeds alternate between the two partitions, so an odd count would give one
+partition an extra run per depth and confound the depth effect with the
+allocation. Four seeds give each partition exactly two.
 
 ### Two measurement problems, and how the design answers them
 
@@ -134,7 +137,7 @@ Cheap, run before any full experiment, each with an explicit failure action.
 Gate (iii) exists because **a treatment that acts by reducing drift cannot be
 observed where drift is absent.**
 
-### Measurement protocol (20 main runs = 4 depths × 5 seeds)
+### Measurement protocol (16 main runs = 4 depths × 4 seeds)
 
 * Identical communication budget per run, no early stopping.
 * **Answer F1** primary (continuous, interpolates stably), **EM** alongside.
@@ -208,7 +211,7 @@ documented. On this branch:
 | Rounds come from a pilot, not a convention | `resolve_schedule()` raises without gate 3's artefact |
 | No early stopping | there is no stopping branch in `src/fl_runner.py` |
 | Evaluation context fixed at `d = 0` | `eval.eval_depth`, asserted equal across depths by the rehearsal |
-| All 20 runs spent an identical budget | `check_runs.py` compares every budget field post hoc |
+| All 16 runs spent an identical budget | `check_runs.py` compares every budget field post hoc |
 
 The remaining commitments are enforced by code that arrives on later branches — see the branch map.
 
@@ -225,7 +228,7 @@ self-contained and builds on the previous one; `week6` contains everything.
 | `week1` | 1.1 / 1.2 | NQ + `psgs_w100` scan, metrics, prompting, **the three pilot gates** — [runbook](docs/week1.md) | included |
 | `week2` | 1.1 / 1.2 | 200k corpus with hard negatives, topic partition, Qdrant, **retrieval cache** — [runbook](docs/week2.md) | included |
 | `week3` | 1.2 | Flower + PEFT federated pipeline, loss masking, cost/recall/drift logging — [runbook](docs/week3.md) | included |
-| **`week4`** | 1.3 | The 20 main runs at a fixed communication budget — [runbook](docs/week4.md) | **you are here** |
+| **`week4`** | 1.3 | The 16 main runs at a fixed communication budget — [runbook](docs/week4.md) | **you are here** |
 | `week5` | 1.4 | τ-sweep interpolation, two-term cost model, break-even surface, diagnostics | later |
 | `week6` | 1.4 | Final report, presentation, limitations, release notes | later |
 
@@ -283,7 +286,7 @@ or if the treatment diagnostics do not behave as predicted.
 
 | Artefact | Contents |
 |---|---|
-| `results/logs/runs/*.jsonl` | 20 learning curves (4 depths × 5 seeds) |
+| `results/logs/runs/*.jsonl` | 16 learning curves (4 depths × 4 seeds) |
 | `results/logs/week4/main_runs.json` | sweep report, failures, integrity |
 | `results/logs/week4/run_checks.json` | budget identity + treatment diagnostics |
 | `results/logs/week4/flops.json` | measured FLOPs and reranker throughput |
@@ -296,7 +299,9 @@ Everything under `data/`, `results/` and generated reports is gitignored: the sc
 
 Carried through to the final report, not discovered at the end:
 
-* 5 seeds — effect sizes and standard errors are reported, **not significance tests**.
+* 4 seeds — effect sizes and standard errors are reported, **not significance tests**.
+  Four was chosen over five because the seed count must be even to use both topic
+  partitions equally; the cost is a standard error about 12 % wider.
 * A single model scale (135M) and a single adapter rank.
 * A fixed round horizon; behaviour beyond the budget is not observed.
 * A fixed client partition (two allocations across the seeds).

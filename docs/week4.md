@@ -1,8 +1,16 @@
-# Week 4 — The 20 main runs
+# Week 4 — The 16 main runs
 
 **Plan subtask:** 1.3
-**Outcome:** 20 learning curves (4 depths × 5 seeds), every one bought with the
+**Outcome:** 16 learning curves (4 depths × 4 seeds), every one bought with the
 same communication budget.
+
+The matrix was 4 x 5 = 20 while Week 1-3 were written. It is 4 x 4 here for two
+reasons. Seeds alternate between the two topic partitions, so only an even seed
+count uses both equally - five seeds would be 1001 three times and 1002 twice,
+mixing the depth effect with the allocation. And `enumerate_runs` puts seed on
+the outer loop, so the sweep is complete at every multiple of four; 16 is a whole
+design rather than a truncated one. Week 1's report quotes the earlier 4 x 5
+figure and is left as the record of what was planned then.
 
 ---
 

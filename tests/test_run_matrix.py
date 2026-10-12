@@ -1,8 +1,11 @@
 import json
+from collections import Counter
+from pathlib import Path
 
 from src.config import Config
 from src.run_matrix import check_integrity, enumerate_runs, group_by_depth, is_complete, pending
-from src.experiment import RunSpec
+from src.config import load_config
+from src.experiment import RunSpec, partition_seed_for
 
 
 def _cfg(tmp_path):
@@ -138,3 +141,14 @@ def test_integrity_catches_a_run_that_never_recorded_its_batch_setting(tmp_path)
     assert not report["identical_budget"]
     issue = next(i for i in report["issues"] if i["field"] == "batch_size")
     assert issue["missing_in"] == ["d0_s1"]
+
+
+def test_the_shipped_matrix_uses_both_topic_partitions_equally():
+    """partition_seed_for 가 시드를 두 파티션에 번갈아 배정하므로 시드 수가
+    홀수면 한쪽 파티션이 한 번 더 들어간다. 그러면 depth 효과가 파티션 효과와
+    섞이므로, 실제로 출하되는 설정의 시드 수는 짝수여야 한다."""
+    cfg = load_config(str(Path(__file__).resolve().parents[1] / "configs/experiment_config.yaml"))
+    seeds = list(cfg.treatment.seeds)
+    assert len(seeds) % 2 == 0, f"시드 수가 홀수다: {seeds}"
+    counts = Counter(partition_seed_for(s, cfg.partition.partition_seeds) for s in seeds)
+    assert len(set(counts.values())) == 1, f"파티션이 고르지 않다: {dict(counts)}"
