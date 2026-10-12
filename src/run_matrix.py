@@ -89,11 +89,19 @@ def check_integrity(cfg, specs: Sequence[RunSpec]) -> dict:
 
     issues = []
     for field in ("rounds", "num_clients", "payload_bytes_per_client_per_direction",
-                  "local_steps_per_round", "total_bytes"):
+                  "local_steps_per_round", "total_bytes",
+                  "batch_size", "grad_accumulation", "examples_per_step"):
         values = collect(field)
         if len(values) > 1:
             issues.append({"field": field, "values": sorted(values),
                            "problem": "differs across runs; the budget is not identical"})
+        # 일부 run 에만 있는 필드는 "같다"고 말할 수 없다. 필드가 생기기 전에 돌린
+        # run 이 섞여 있으면 그 run 의 설정은 기록에 없으므로 검증 불가다.
+        missing = [name for name, s in summaries.items() if field not in s]
+        if values and missing:
+            issues.append({"field": field, "missing_in": sorted(missing),
+                           "problem": "not recorded for every run; these runs predate the field "
+                                      "and their setting cannot be verified - redo them"})
 
     schedules = {tuple(s["eval_rounds"]) for s in summaries.values() if "eval_rounds" in s}
     if len(schedules) > 1:

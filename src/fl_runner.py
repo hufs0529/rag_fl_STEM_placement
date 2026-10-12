@@ -131,6 +131,15 @@ def run_experiment(
         "local_steps_per_round": spec.local_steps_per_round,
         "total_local_steps": spec.total_local_steps,
         "num_clients": data.num_clients,
+        # 배치 설정을 기록에 남긴다. batch_size x grad_accumulation 이 같으면 한 스텝이
+        # 소비하는 예제 수가 같지만(tests/test_local_train.py), 쪼개는 방식이 다르면
+        # 가변 길이 텍스트에서 토큰 가중이 미세하게 달라진다. 20 run 이 같은 설정이었음을
+        # check_runs.py 가 증명할 수 있어야 한다.
+        "batch_size": int(cfg.train.batch_size),
+        "grad_accumulation": int(cfg.train.get("grad_accumulation", 1) or 1),
+        "examples_per_step": (
+            int(cfg.train.batch_size) * int(cfg.train.get("grad_accumulation", 1) or 1)
+        ),
         "eval_rounds": schedule,
         "early_stopping": False,
         "backend": backend,

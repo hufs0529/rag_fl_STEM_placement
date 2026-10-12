@@ -142,13 +142,18 @@ train:
   optimizer: adamw
   learning_rate: 2.0e-4
   weight_decay: 0.0
-  # CPU 에서는 bfloat16 학습이 안 되므로 float32 로 돌아가고, logits 텐서가
-  # batch x seq x vocab x 4 바이트가 된다. batch 8 x 1024 x 49,152 = 1.61 GB 이고
-  # 역전파까지 약 4.8 GB - 실측으로 7.2 GB 까지 올라가 OOM 킬러에 죽었다.
-  # batch 2 x 누적 4 는 **유효 배치 8 을 그대로 유지**하면서 피크를 1.2 GB 로 낮춘다.
-  # GPU 로 옮기면 batch_size 8 / grad_accumulation 1 로 되돌려도 된다.
-  batch_size: 2
-  grad_accumulation: 4               # 유효 배치 = batch_size x grad_accumulation = 8
+  # 유효 배치는 batch_size x grad_accumulation = 8 로 고정이다. 이 곱이 바뀌면
+  # 게이트 3 의 S = (질문수 / 유효배치) x 패스 가 바뀌고 R 도 따라 바뀐다.
+  #
+  # CPU(float32)에서는 batch 8 의 logits 가 batch x seq x vocab x 4 = 1.61 GB,
+  # 역전파까지 실측 7.2 GB 로 OOM 킬러에 죽었다. 그래서 batch 2 x 누적 4 로
+  # 유효 배치를 유지하며 피크만 1.2 GB 로 낮췄다.
+  # GPU(bfloat16)에서는 그 제약이 없고, 작은 배치 4 번은 커널 실행·파이썬 루프
+  # 고정비를 4 번 낸다. 실측: batch 2 x 4 는 GPU 39% / 라운드 160 초,
+  # batch 8 x 1 은 GPU 100% / 라운드 약 110 초 (1.6 배).
+  # CPU 로 되돌릴 때는 batch_size 2 / grad_accumulation 4 로 바꾼다.
+  batch_size: 8
+  grad_accumulation: 1               # 유효 배치 = batch_size x grad_accumulation = 8
   max_grad_norm: 1.0
   # Subtask 1.2 (iii) 에서 확정된다. 여기 값은 gate 3 결과로 덮어쓴다.
   # Fixed by gate 3 (Subtask 1.2 iii); these are placeholders it overwrites.

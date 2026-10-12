@@ -50,7 +50,11 @@ model:
   max_new_tokens: 16
 
 train:
+  # 리허설은 CPU/소형 머신에서 돌리므로 배치를 쪼개지만, **유효 배치 8 은
+  # 본실험과 같게 유지한다**(2 x 4). 본 설정이 batch 8 / 누적 1 로 바뀌었으므로
+  # 여기서 누적을 명시하지 않으면 리허설만 유효 배치 2 가 되어버린다.
   batch_size: 2
+  grad_accumulation: 4
   local_steps_per_round: 4
   total_local_steps: 24
   rounds: 6

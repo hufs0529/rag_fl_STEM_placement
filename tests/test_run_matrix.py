@@ -27,6 +27,7 @@ def _write_summary(tmp_path, name, **overrides):
         "payload_bytes_per_client_per_direction": 1_840_000,
         "local_steps_per_round": 16, "total_bytes": 60 * 8 * 1_840_000 * 2,
         "eval_rounds": [1, 2, 3], "early_stopping": False,
+        "batch_size": 8, "grad_accumulation": 1, "examples_per_step": 8,
     }
     payload.update(overrides)
     (runs / f"{name}_summary.json").write_text(json.dumps(payload))
@@ -107,3 +108,33 @@ def test_grouping_by_depth_gives_five_seeds_each(tmp_path):
     groups = group_by_depth(enumerate_runs(_cfg(tmp_path)))
     assert sorted(groups) == [0, 3, 10, 50]
     assert all(len(v) == 5 for v in groups.values())
+
+
+def test_integrity_catches_a_run_trained_with_a_different_batch_split(tmp_path):
+    """batch 2 x 누적 4 와 batch 8 x 누적 1 은 한 스텝의 예제 수는 같지만 쪼개는
+    방식이 다르다. 가변 길이 텍스트에서 토큰 가중이 달라지므로 섞여선 안 된다."""
+    cfg = _cfg(tmp_path)
+    specs = enumerate_runs(cfg)
+    for spec in specs:
+        _write_summary(tmp_path, spec.name)
+    _write_summary(tmp_path, "d10_s1", batch_size=2, grad_accumulation=4)
+    report = check_integrity(cfg, specs)
+    assert not report["identical_budget"]
+    assert {i["field"] for i in report["issues"]} >= {"batch_size", "grad_accumulation"}
+
+
+def test_integrity_catches_a_run_that_never_recorded_its_batch_setting(tmp_path):
+    """필드가 생기기 전에 돌린 run 은 설정을 증명할 수 없으므로 통과시키지 않는다."""
+    cfg = _cfg(tmp_path)
+    specs = enumerate_runs(cfg)
+    for spec in specs:
+        _write_summary(tmp_path, spec.name)
+    stale = tmp_path / "runs" / "d0_s1_summary.json"
+    payload = json.loads(stale.read_text())
+    for field in ("batch_size", "grad_accumulation", "examples_per_step"):
+        payload.pop(field)
+    stale.write_text(json.dumps(payload))
+    report = check_integrity(cfg, specs)
+    assert not report["identical_budget"]
+    issue = next(i for i in report["issues"] if i["field"] == "batch_size")
+    assert issue["missing_in"] == ["d0_s1"]
