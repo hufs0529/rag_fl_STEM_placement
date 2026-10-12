@@ -3,7 +3,7 @@
 # README 의 테스트 개수는 브랜치마다 다르므로 실측으로 갱신한다.
 #
 #   scripts/dev/rebase_chain.sh            # week2..week6 전부
-#   scripts/dev/rebase_chain.sh week3      # week3 하나만 (부모는 week2)
+#   scripts/dev/rebase_chain.sh week3      # week3 **부터 week6 까지**
 set -u
 cd "$(dirname "$0")/../.."
 
@@ -74,8 +74,15 @@ one() {
   echo "$W -> $(git rev-parse --short HEAD) | ${AFTER} commits | ${N} passed"
 }
 
-if [ $# -eq 1 ]; then
-  n=${1#week}; one "week$n" "week$((n-1))"
-else
-  for n in 2 3 4 5 6; do one "week$n" "week$((n-1))" || exit 1; done
+# 인자는 **시작 브랜치**이며, 거기서부터 week6 까지 한 번의 호출로 처리한다.
+# 브랜치 하나만 처리하고 끝내면 안 된다: one() 은 마지막에 README 테스트 수를
+# 넣으려고 부모 tip 을 amend 하므로, 다음 호출에서 자식의 기록된 분기점이
+# 사라진다. 그러면 merge-base 가 그보다 뒤로 잡히고, 부모의 tip 이 자식 위에
+# **중복 복제**된다 (amend 로 patch-id 가 달라져 git 이 버리지 못한다).
+# 한 호출 안에서는 BASE 를 맨 위에서 전부 구해 두므로 그 문제가 없다.
+START=${1:-week2}
+START=${START#week}
+if [ "$START" -lt 2 ] || [ "$START" -gt 6 ]; then
+  echo "시작 브랜치는 week2..week6 중 하나여야 한다"; exit 2
 fi
+for n in $(seq "$START" 6); do one "week$n" "week$((n-1))" || exit 1; done

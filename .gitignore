@@ -31,6 +31,10 @@ results/logs/
 !results/logs/week3/
 !results/logs/week3/*.json
 !results/logs/week3/*.jsonl
+# Week 4 의 스윕 보고서와 무결성 점검 결과. gates/ 와 week2/ 와 같은 성격이다 -
+# 보고서가 인용하는 측정 요약이고 수십 KB 다. sweep.pid 는 아래에서 계속 제외한다.
+!results/logs/week4/
+!results/logs/week4/*.json
 results/logs/**/*.npz
 results/logs/**/*.npy
 *.log
