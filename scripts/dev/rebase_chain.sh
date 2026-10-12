@@ -22,7 +22,10 @@ one() {
   if [ -z "$OLD" ]; then
     echo "  !! $W 의 분기점을 못 찾았다"; return 1
   fi
-  BEFORE=$(git rev-list --count "$OLD..$W")
+  # 리베이스 전 커밋 제목을 남긴다. 아래에서 "어디로도 가지 않은 커밋" 을 찾는다.
+  local TD; TD=$(mktemp -d)
+  git log --format=%s "$OLD..$W" > "$TD/before"
+  BEFORE=$(wc -l < "$TD/before" | tr -d ' ')
   git rebase --onto "$PARENT" "$OLD" "$W" >/dev/null 2>&1 || true
   while [ -d .git/rebase-merge ] || [ -d .git/rebase-apply ]; do
     local C
@@ -39,18 +42,36 @@ one() {
     done
     GIT_EDITOR=true git rebase --continue >/dev/null 2>&1 || break
   done
-  # 커밋이 하나라도 사라졌으면 멈춘다. 조용히 잃는 것이 가장 비싼 실패다.
+  # 커밋이 조용히 사라졌는지 본다. 단순히 개수를 비교하면 오경보가 난다:
+  # 부모가 이미 다시 쓰인 뒤에 merge-base 를 구하면 분기점이 실제보다 뒤로
+  # 잡히고, 그 구간의 부모 커밋들은 patch-id 가 같아 git 이 정당하게 버린다.
+  # 그래서 "리베이스 전 제목이 리베이스 후 브랜치에도, 부모에도 없는" 커밋만
+  # 유실로 본다.
   AFTER=$(git rev-list --count "$PARENT..$W")
-  if [ "$BEFORE" != "$AFTER" ]; then
-    echo "  !! $W 의 커밋이 ${BEFORE} -> ${AFTER} 로 변했다. git reflog 로 복구하고"
-    echo "     분기점 계산을 확인한다 (OLD=$OLD)"
+  git log --format=%s "$PARENT..$W" > "$TD/after"
+  git log --format=%s -200 "$PARENT" >> "$TD/after"
+  local LOST
+  LOST=$(grep -vxF -f "$TD/after" "$TD/before" || true)
+  if [ -n "$LOST" ]; then
+    echo "  !! $W 에서 커밋이 유실됐다 (${BEFORE} -> ${AFTER}). git reflog 로 복구한다:"
+    echo "$LOST" | sed 's/^/     - /'
+    rm -rf "$TD"; return 1
+  fi
+  rm -rf "$TD"
+
+  # 테스트는 **실패 여부로** 판정한다. passed 개수만 뽑으면 "302 passed" 를
+  # 찍으면서 그 옆의 "1 failed" 를 숨긴다 - 실제로 그렇게 지나간 적이 있다.
+  local OUT N
+  OUT=$(.venv/bin/python -m pytest tests -q 2>&1)
+  N=$(printf '%s' "$OUT" | grep -oE '[0-9]+ passed' | grep -oE '[0-9]+' | head -1)
+  if printf '%s' "$OUT" | grep -qE '[0-9]+ (failed|error)'; then
+    echo "  !! $W 에서 테스트 실패:"
+    printf '%s' "$OUT" | grep -E '^(FAILED|ERROR)' | head -5 | sed 's/^/     /'
     return 1
   fi
-  local N
-  N=$(.venv/bin/python -m pytest tests -q 2>&1 | grep -oE '[0-9]+ passed' | grep -oE '[0-9]+')
   sed -i -E "s/^pytest -q( +)# [0-9]+ tests on this branch/pytest -q\1# ${N} tests on this branch/" README.md
   git add README.md && git commit -q --amend --no-edit
-  echo "$W -> $(git rev-parse --short HEAD) | ${BEFORE} commits | ${N} passed"
+  echo "$W -> $(git rev-parse --short HEAD) | ${AFTER} commits | ${N} passed"
 }
 
 if [ $# -eq 1 ]; then
