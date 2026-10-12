@@ -149,7 +149,19 @@ echo
 # head -1 로 하나만 보여주면 **중복 실행을 놓친다.** 두 스윕이 같은 jsonl 에
 # 쓰고 한 GPU 에 모델을 두 벌 올려 OOM 을 내는데, 표에는 정상처럼 보인다.
 # 실제로 그렇게 지나간 적이 있어서 전부 찍고 2 개 이상이면 경고한다.
-PIDS=$(pgrep -f "scripts/(run_single_run|run_main_runs)\.py" 2>/dev/null || true)
+# pgrep -f 는 **명령줄에 이름이 등장하기만 해도** 걸린다. `tail -f week4.log`
+# 같은 명령이나 스크립트 이름을 언급하는 셸까지 잡히므로, 실제 파이썬 프로세스만
+# 남긴다(/proc/PID/comm 이 python 인 것). 거짓 양성은 워처를 영원히 기다리게
+# 만들고, 거짓 음성은 작업 위에서 인스턴스를 끄게 만든다.
+py_pids() {
+  local p c
+  for p in $(pgrep -f "$1" 2>/dev/null); do
+    c=$(cat "/proc/$p/comm" 2>/dev/null || true)
+    case "$c" in python*) echo "$p" ;; esac
+  done
+}
+
+PIDS=$(py_pids "scripts/(run_single_run|run_main_runs)\.py")
 if [ -n "${PIDS:-}" ]; then
   N=$(echo "$PIDS" | wc -l | tr -d ' ')
   for PID in $PIDS; do
