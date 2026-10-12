@@ -100,6 +100,21 @@ Three properties are enforced deliberately:
 
 Client heterogeneity is therefore a **fixed background condition, not a factor.**
 
+**Why the two partitions differ in questions per client.** Equality is enforced
+by trimming every client down to the size of the smallest one, so the common
+size is whatever the least-loaded client happens to hold. The seed drives the
+topic clustering and the allocation of clusters to clients, so the least-loaded
+client differs between the two partitions: 9,844 under seed 1001 and 9,742 under
+1002, a difference of 102 questions, or 1.0 %. Trimming discards 1,968 questions
+(2.4 %) from the first partition and 2,784 (3.4 %) from the second — the price of
+exact equality within a partition, paid so that client size cannot act as a
+second varying factor.
+
+The difference between the partitions does not reach the depth comparison.
+Depths are compared within a seed, and each seed uses one partition throughout,
+so a 1 % difference in client size is a level shift between partitions that the
+paired comparison removes.
+
 ### 2.4 Indexes
 
 One vector index per client per partition seed, so each client retrieves only
@@ -123,6 +138,22 @@ is identical across conditions. Without it, a gain of a few points cannot be
 judged large or small.
 
 ### 2.6 Depth ladder, measured
+
+**Why 0, 3, 10 and 50.** Three of the four values are fixed by the design rather
+than chosen:
+
+| `d` | Determined by | Why it cannot be anything else |
+|---|---|---|
+| 0 | — | The baseline: dense retrieval with no reranking |
+| **3** | `top_k = 3` | The ordering control only works at exactly `top_k`. Below it, some prompt slots are never rescored; above it, a fourth passage can be promoted and the arm stops being an ordering control. Only `d = top_k` gives `promotion = 0` with `rank_change > 0` |
+| **50** | `candidate_pool = 50` | The full pool. There is nothing beyond it to rescore |
+| 10 | free choice | The one interior point, placed roughly geometrically between 3 and 50 |
+
+So the ladder is: no reranking, reordering only, part of the pool, all of the
+pool. The pool itself is held at 50 because reranking FLOPs scale with it, and
+those FLOPs are the cost side of the exchange rate — a larger pool raises the
+ceiling (measured: 0.669 at 50, 0.721 at 100, 0.774 at 200) but makes the
+compute the project is trading away larger.
 
 Gold recall at the three prompt slots, averaged over the eight clients:
 
@@ -284,9 +315,22 @@ and the three data splits are files on disk.
 
 Week 4 executes the main runs on this apparatus: **4 depths × 4 seeds = 16 runs**,
 each on the same 1.7400 GB budget, 27.8 GB of accounted communication in total.
-The seed count is even by requirement — seeds alternate between the two topic
-partitions, so an even count uses both equally and keeps the depth effect
-separate from the allocation.
+**The matrix was 4 × 5 = 20 while Weeks 1–3 were written.** It was reduced to
+4 × 4 to cut the sweep's wall clock, and 16 is the number because it is the only
+balanced matrix below 20. `partition_seed_for` alternates seeds between the two
+topic partitions, so only an even seed count uses both equally: five seeds give
+1001 three times and 1002 twice per depth, three seeds give 2:1, and four give
+2:2. Fifteen runs is not a matrix at all — 4 does not divide 15, and stopping a
+seed-major sweep there omits `d50_s4`, the strongest treatment cell.
+
+So the reduction also corrects an imbalance the original plan carried: at five
+seeds the depth effect would have been measured under one partition more often
+than the other. The cost is a standard error about 12 % wider than five seeds
+would give (√5⁄√4), and the saving is 5.7 hours of the measured 22.6-hour sweep.
+
+If four seeds prove too few, the matrix extends to 6 × 4 = 24 — the next
+balanced point, 3:3 across partitions — without repeating anything: seed is the
+outer loop and completed runs are skipped, so only the eight new runs execute.
 
 Week 5 converts the sixteen curves into the exchange rate: rounds saved at a
 given target, the communication those rounds represent, and the reranking FLOPs
