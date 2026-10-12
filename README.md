@@ -17,16 +17,25 @@ Federated Learning (FL) lets several machines jointly fine-tune an LLM without
 sharing raw data, and its dominant cost is communication. Total communication is
 
 ```
-total bytes  =  R  x  N  x  |AB|  x  2
-                ^     ^      ^      ^
-                |     |      |      upload + download
-                |     |      LoRA adapter payload
+total bytes  =  R  x  N  x  (|A| + |B|)  x  bytes/param  x  2
+                ^     ^           ^                         ^
+                |     |           |                  upload + download
+                |     |           LoRA adapter payload: the element counts
+                |     |           of the two factors ADDED, not multiplied
                 |     number of clients
                 rounds required
 ```
 
-The established levers — PEFT, quantisation, sparsification — all shrink `|AB|`,
-the **bytes per round**. This project attacks the other factor, `R`, the
+`|A| + |B|` is a sum, not a product: an adapter transmits both factor matrices,
+so its payload is their element counts added. At rank 8 over the attention
+projections of SmolLM2-135M that is 921,610 parameters, 1.84 MB at fp16 — a
+product would be a number with twelve digits. The code counts it as a sum
+(`count_trainable` sums `p.numel()` over trainable parameters) and this README
+previously wrote it `|AB|`, which reads as a product and drew exactly that
+question.
+
+The established levers — PEFT, quantisation, sparsification — all shrink the
+per-round payload. This project attacks the other factor, `R`, the
 **rounds required**, from an unexpected direction: the quality of the retrieval
 that constructs each client's training inputs.
 
@@ -155,7 +164,7 @@ observed where drift is absent.**
 
 For a target accuracy `τ`, read off the round at which each depth first reaches
 `τ` by linear interpolation, and convert the difference into saved bytes via
-`R x N x |AB| x 2`. Because the verdict would otherwise depend on the choice of
+`R x N x (|A| + |B|) x bytes/param x 2`. Because the verdict would otherwise depend on the choice of
 `τ`, **`τ` is swept** across the range the baseline attains and the saving is
 reported as a curve; regions where a condition never reaches `τ` are reported as
 such rather than extrapolated.

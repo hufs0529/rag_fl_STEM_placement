@@ -4,7 +4,7 @@
 리허설이 확인하는 것(계획서 Week 3 "reduced-scale rehearsal"):
   1) 캐시 -> depth 선택 -> 프롬프트 -> answer-token 마스킹 경로가 살아 있는가
   2) 조건 간 차이가 **실제로 걸리는가** (rank-change / promotion > 0 at d>3)
-  3) 통신 바이트 회계가 R x N x |AB| x 2 와 일치하는가
+  3) 통신 바이트 회계가 R x N x (|A| + |B|) x bytes/param x 2 와 일치하는가
   4) drift 와 곡선이 로그에 남는가
   5) 평가 컨텍스트가 모든 조건에서 d=0 으로 고정되어 있는가
 

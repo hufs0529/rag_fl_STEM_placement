@@ -111,7 +111,10 @@ def describe_payload(n_trainable: int, num_clients: int, rounds: int, dtype: str
         "payload_mb_per_client_per_direction": per_direction / 1e6,
         "total_bytes": rounds * num_clients * per_direction * 2,
         "total_mb": rounds * num_clients * per_direction * 2 / 1e6,
-        "formula": "R x N x |AB| x 2",
+        # |A| + |B| 는 **합**이다 - 어댑터는 두 인자 행렬을 둘 다 보내므로
+        # payload 는 원소 개수의 합이다. n_trainable 이 그 합이고
+        # (count_trainable 이 p.numel() 을 더한다), 곱이면 자리수가 12 개가 된다.
+        "formula": "R x N x (|A| + |B|) x bytes_per_param x 2",
     }
 
 

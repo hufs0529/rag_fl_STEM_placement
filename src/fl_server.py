@@ -1,7 +1,7 @@
 """FedAvg 서버 + 라운드별 측정 기록 (Subtask 1.3).
 
 서버가 매 라운드 기록하는 것들(계획서 "Also recorded"):
-  - 누적 통신 바이트 (R x N x |AB| x 2)
+  - 누적 통신 바이트 (R x N x (|A| + |B|) x bytes/param x 2)
   - client-update divergence (기전 확인용)
   - rank-change rate / promotion rate (처리가 실제로 걸렸는지)
   - 예약된 라운드에서의 F1 / EM (곡선)

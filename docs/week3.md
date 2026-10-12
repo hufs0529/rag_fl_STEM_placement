@@ -229,7 +229,7 @@ backend the config selects.
 
 | Field | Why the plan needs it |
 |---|---|
-| `cumulative_bytes` | `R x N x |AB| x 2` — the quantity being traded |
+| `cumulative_bytes` | `R x N x (|A| + |B|) x bytes/param x 2` — the quantity being traded |
 | `f1`, `em` | the curve (on scheduled rounds only) |
 | `drift_divergence`, `drift_mean_pairwise_cosine` | the **mechanism check** |
 | `rank_change_rate`, `promotion_rate` | confirms the treatment took effect |
@@ -246,7 +246,7 @@ without retraining anything.
 `scripts/run_rehearsal.py` runs one short run per depth and asserts:
 
 1. `R` rounds logged, curve points present on the scheduled rounds;
-2. `cumulative_bytes` equals `R × N × |AB| × 2` computed independently;
+2. `cumulative_bytes` equals `R × N × (|A| + |B|) × bytes/param × 2` computed independently;
 3. drift recorded every round;
 4. **treatment took effect** — `promotion_rate > 0` for `d > 3`;
 5. **control promotes nothing** — `promotion_rate == 0` for `d ∈ {0, 3}`;

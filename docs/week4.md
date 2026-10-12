@@ -111,7 +111,7 @@ exception in run 17.
 Every run spends exactly
 
 ```
-R × N × |AB| × 2  =  R rounds × 8 clients × 1.84 MB × 2 directions
+R × N × (|A| + |B|) × 2  =  R rounds × 8 clients × 1.84 MB × 2 directions
 ```
 
 with `R` and `K` injected from gate 3's `calibrated_schedule.json`. There is no

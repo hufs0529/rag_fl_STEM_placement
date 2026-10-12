@@ -88,5 +88,8 @@ def payload_bytes_of(state_dict: Dict, dtype_width: int = 2) -> int:
 
 
 def cumulative_bytes(rounds: int, num_clients: int, payload: int) -> int:
-    """총 통신량 = R x N x |AB| x 2 (업로드 + 다운로드)."""
+    """총 통신량 = R x N x (|A| + |B|) x bytes/param x 2 (업로드 + 다운로드).
+
+    |A| + |B| 는 합이다 - 두 인자 행렬을 둘 다 전송하므로 원소 개수를 더한다.
+    """
     return rounds * num_clients * payload * 2
