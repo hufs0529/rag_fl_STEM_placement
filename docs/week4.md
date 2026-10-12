@@ -57,6 +57,13 @@ fragility that lost the curve in the first place.
 
 ## Run the sweep
 
+Only one sweep may run at a time. Launching the `nohup` line twice gives both
+processes the same pending list, so they write interleaved rounds into the same
+`results/logs/runs/*.jsonl` and load the model onto the GPU twice, which pushes
+past 24 GB and kills run after run with no obvious cause in the log. A pid lock
+at `results/logs/week4/sweep.pid` now refuses the second one; a lock left by a
+killed process is ignored. `--dry-run` and `run_status.sh` work regardless.
+
 ```bash
 python scripts/run_main_runs.py --dry-run     # show the matrix and what is pending
 python scripts/run_main_runs.py               # execute, skipping completed runs

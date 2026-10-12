@@ -1,11 +1,15 @@
 import json
+import os
+
+import pytest
 from collections import Counter
 from pathlib import Path
 
 from src.config import Config
 from src.logging_utils import JsonlLogger
 from src.run_matrix import (
-    check_integrity, enumerate_runs, group_by_depth, is_complete, load_curve, pending,
+    acquire_sweep_lock, check_integrity, enumerate_runs, group_by_depth, is_complete,
+    load_curve, lock_holder, pending,
 )
 from src.config import load_config
 from src.experiment import RunSpec, partition_seed_for
@@ -203,3 +207,41 @@ def test_append_is_still_the_default_so_gate_logs_accumulate(tmp_path):
         with JsonlLogger(path) as logger:
             logger.write({"event": "probe"})
     assert len(path.read_text().strip().splitlines()) == 2
+
+
+def test_a_second_sweep_is_refused_while_one_is_running(tmp_path):
+    """스윕을 두 번 띄우면 같은 jsonl 에 두 프로세스가 쓰고 GPU 에 모델이 두 벌
+    올라간다. 산출물은 조용히 망가진다."""
+    lock = tmp_path / "sweep.pid"
+    lock.write_text("4242")
+    assert lock_holder(lock, is_alive=lambda pid: True) == 4242
+
+
+def test_a_lock_left_by_a_killed_process_is_ignored(tmp_path):
+    """kill -9 로 남은 락 때문에 다시 못 돌리는 일은 없어야 한다."""
+    lock = tmp_path / "sweep.pid"
+    lock.write_text("4242")
+    assert lock_holder(lock, is_alive=lambda pid: False) is None
+
+
+def test_our_own_pid_is_not_a_conflict(tmp_path):
+    lock = tmp_path / "sweep.pid"
+    lock.write_text(str(os.getpid()))
+    assert lock_holder(lock, is_alive=lambda pid: True) is None
+
+
+def test_a_corrupt_or_absent_lock_does_not_block_the_sweep(tmp_path):
+    lock = tmp_path / "sweep.pid"
+    assert lock_holder(lock) is None
+    lock.write_text("not a pid")
+    assert lock_holder(lock) is None
+
+
+def test_acquire_writes_our_pid_and_refuses_a_live_holder(tmp_path):
+    cfg = _cfg(tmp_path)
+    path = acquire_sweep_lock(cfg)
+    assert path.read_text().strip() == str(os.getpid())
+    path.write_text("4242")
+    with pytest.raises(SystemExit) as exc:
+        acquire_sweep_lock(cfg, is_alive=lambda pid: True)
+    assert "4242" in str(exc.value) and "pkill" in str(exc.value)

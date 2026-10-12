@@ -26,7 +26,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from src.config import add_config_args, config_from_args
 from src.fl_runner import run_experiment
 from src.logging_utils import banner, save_json
-from src.run_matrix import check_integrity, enumerate_runs, is_complete, pending
+from src.run_matrix import (
+    acquire_sweep_lock, check_integrity, enumerate_runs, is_complete, pending,
+)
 
 
 def main() -> int:
@@ -67,6 +69,9 @@ def main() -> int:
     if args.dry_run:
         return 0
 
+    # --dry-run 뒤에 둔다: 상태 확인은 스윕이 돌고 있어도 할 수 있어야 한다.
+    lock = acquire_sweep_lock(cfg)
+
     started = time.time()
     failures = []
     for i, spec in enumerate(todo, 1):
@@ -97,6 +102,7 @@ def main() -> int:
         print(f"    ISSUE {issue['field']}: {issue['problem']}")
     if failures:
         print(f"  failed runs: {', '.join(f['run'] for f in failures)}")
+    lock.unlink(missing_ok=True)
     return 0 if not failures and integrity["identical_budget"] else 1
 
 

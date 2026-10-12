@@ -14,6 +14,7 @@ stopping 이 없다. 이 모듈은 세 가지를 담당한다:
 Enumeration, resumption and integrity checking for the main runs.
 """
 
+import os
 from pathlib import Path
 from typing import Dict, Iterator, List, Optional, Sequence
 
@@ -37,6 +38,51 @@ def enumerate_runs(cfg, calibrated_path: str = None) -> List[RunSpec]:
         for seed in cfg.treatment.seeds
         for depth in cfg.treatment.depths
     ]
+
+
+def _pid_alive(pid: int) -> bool:
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return False
+    except PermissionError:          # 다른 사용자의 프로세스 - 살아 있다
+        return True
+    return True
+
+
+def lock_holder(path: Path, is_alive=_pid_alive) -> Optional[int]:
+    """락 파일이 **살아 있는 다른 프로세스**를 가리키면 그 pid, 아니면 None.
+
+    같은 스윕을 두 번 띄우면 두 프로세스가 같은 pending 목록을 받아 같은
+    jsonl 에 라운드를 섞어 쓰고, 한 GPU 에 모델을 두 벌 올려 OOM 으로 run 을
+    연달아 죽인다. 산출물은 조용히 망가지고 로그만 보면 알기 어렵다.
+    죽은 프로세스의 락은 무시한다(kill -9 로 남은 것).
+    """
+    if not path.exists():
+        return None
+    try:
+        pid = int(path.read_text().strip())
+    except (OSError, ValueError):
+        return None
+    if pid == os.getpid() or not is_alive(pid):
+        return None
+    return pid
+
+
+def acquire_sweep_lock(cfg, is_alive=_pid_alive) -> Path:
+    """스윕이 하나만 돌도록 보장한다. 이미 돌고 있으면 SystemExit."""
+    path = Path(cfg.paths.log_dir) / "week4" / "sweep.pid"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    other = lock_holder(path, is_alive)
+    if other is not None:
+        raise SystemExit(
+            f"스윕이 이미 pid {other} 로 돌고 있다 ({path}).\n"
+            f"두 스윕은 같은 results/logs/runs/*.jsonl 에 동시에 쓰고 한 GPU 에\n"
+            f"모델을 두 벌 올린다. 진행 상황은 `bash scripts/run_status.sh` 로 보고,\n"
+            f"정말 멈추려면 `pkill -f run_main_runs.py` 를 쓴다."
+        )
+    path.write_text(str(os.getpid()))
+    return path
 
 
 def summary_path(cfg, spec: RunSpec) -> Path:

@@ -78,3 +78,5 @@ wandb/
 *.pt
 *.safetensors
 *.egg-info/
+
+results/logs/week4/sweep.pid
