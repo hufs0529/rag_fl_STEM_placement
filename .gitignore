@@ -26,13 +26,19 @@ results/logs/
 # Week 3 의 검증 run 은 results/logs/runs/ 에 두면 안 된다. is_complete 가
 # summary 를 보고 완료로 판정하므로 Week 4 스윕이 그 run 을 건너뛰고, batch 2
 # 로 돈 run 이 16 회 중 하나로 섞인다. 그래서 week3/ 로 옮겨 보관한다.
-# 곡선은 .jsonl 이므로 *.json 패턴에 안 걸린다 - 따로 적어야 한다.
+# 곡선은 .jsonl 이고 run 의 stdout 은 .log 다. 둘 다 *.json 패턴에 안 걸리므로
+# 따로 적어야 한다. .log 는 아래 전역 *.log 규칙보다 **뒤에** 풀어야 한다.
 !results/logs/week3/
 !results/logs/week3/*.json
 !results/logs/week3/*.jsonl
 results/logs/**/*.npz
 results/logs/**/*.npy
 *.log
+# 단, Week 3 검증 run 의 stdout 은 남긴다. 그 run 의 jsonl 은 Week 4 준비 중
+# results/logs/runs/ 에서 지워졌고, 이 로그가 59 라운드가 남은 유일한 기록이다
+# (round, loss, drift, 누적 MB, F1, EM). 5 KB 다.
+# 전역 *.log 보다 뒤에 와야 한다 - gitignore 는 마지막에 맞는 규칙이 이긴다.
+!results/logs/week3/*.log
 qdrant_storage/
 
 # python

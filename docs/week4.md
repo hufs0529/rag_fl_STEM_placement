@@ -19,10 +19,7 @@ figure and is left as the record of what was planned then.
 Anything in `results/logs/runs/` with a `completed: true` summary is skipped, so
 a run left over from Week 3 or from a timing measurement silently becomes one of
 the sixteen. Week 3's verification run was trained at batch 2 x accum 4 and the
-sweep uses batch 8 x accum 1, so it must not be counted - but it must not be
-deleted either: `results/logs/runs/` is gitignored, so that file is the only copy
-of the artefact the Week 1-3 reports quote. Move it to `results/logs/week3/`,
-which is outside the sweep's scan path and is version-controlled.
+sweep uses batch 8 x accum 1, so it must not be counted.
 
 ```bash
 mkdir -p results/logs/week3
@@ -31,9 +28,30 @@ rm -f results/logs/runs/d0_s1*                       # discard: timing measureme
 ls results/logs/runs/                                # must be empty
 ```
 
-The timing measurement is discarded rather than kept because it was launched with
-`--set` overrides before the manifest recorded the batch split, so `check_runs.py`
+The timing measurement is discarded because it was launched with `--set`
+overrides before the manifest recorded the batch split, so `check_runs.py`
 reports its setting as unverifiable.
+
+### What happened in practice
+
+`d10_s1.jsonl` was deleted rather than moved while clearing the way for this
+sweep, and `results/logs/runs/` is gitignored, so there was no second copy. What
+survived is the run's stdout, `results/logs/week3/w3_d10_s1.log`: 59 rounds of
+round number, loss, drift, cumulative MB and the F1/EM at every scheduled
+evaluation. The figures the Week 1-3 reports quote (F1 28.94, EM 21.90, 1.7400
+GB over 59 rounds) are all in it.
+
+It was not rebuilt into a `.jsonl`. The stdout carries everything the reports
+cite and nothing reads the file - Week 5 analyses the sixteen batch-8 runs, and
+`d10_s1` is not one of them - so a reconstruction would only risk a derived file
+being mistaken for a primary one. `promotion_rate`, `rank_change_rate`,
+`eval_gold_recall_at_3` and the exact byte counts were never printed and are
+gone; Week 4 measures all of them again at `d=10` across four seeds.
+
+`.gitignore` now keeps `results/logs/week3/*.log` as well as `*.json` and
+`*.jsonl`, after the global `*.log` rule so the negation wins. Without that line
+the preserved logs would still have lived only on the instance - the same
+fragility that lost the curve in the first place.
 
 ---
 
