@@ -307,7 +307,14 @@ cost:
   device_throughput_flops: 1.0e+12    # effective FLOP/s of the client accelerator
   bandwidth_sweep_mbps: [1, 5, 10, 25, 50, 100, 250, 1000]
   query_volume_sweep: [1.0e+3, 1.0e+4, 1.0e+5, 1.0e+6, 1.0e+7]
-  tau_sweep_points: 25                # tau swept across the range the baseline attains
+  # tau 격자는 더 이상 선언하지 않는다. 균등 격자를 쓰면 간격을 사람이 정해야
+  # 하고("왜 25 점인가" 에 답이 없었다), 곡선이 급한 구간에 점이 몰린다 - 실측에서
+  # 25 점 중 15 점이 라운드 0->1 구간에 빠져 절감이 정확히 0 으로 나왔다.
+  # 이제 tau_grid 가 baseline 곡선이 **실제로 낸 평가점 값**을 쓴다.
+  #
+  # tau 범위도 유도된다 (src/analysis/curves.py:attainable_range):
+  #   하한 = max(시드별 라운드 1 의 값)   라운드 1 미만은 실행할 수 없는 값
+  #   상한 = min(시드별 최고값)           그 위에서는 약한 시드가 탈락한다
 
 paths:
   data_dir: data

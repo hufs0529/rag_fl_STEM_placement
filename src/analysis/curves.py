@@ -49,26 +49,57 @@ def rounds_to_target(curve: Sequence[dict], tau: float, metric: str = "f1") -> O
 
 
 def attainable_range(curves: Sequence[Sequence[dict]], metric: str = "f1") -> tuple:
-    """baseline 곡선들이 실제로 도달한 정확도 구간 - tau 스윕의 범위.
+    """baseline 곡선들이 실제로 쓸 수 있는 tau 구간. 두 경계 모두 **유도된다.**
 
-    이 구간 밖의 tau 는 baseline 이 도달하지 못하므로 "절감"을 정의할 수 없다.
+    하한 = max(라운드 1 의 값).  라운드 0 의 값이 아니다.
+      곡선은 라운드 0 에서 1 사이에 거의 수직으로 오른다(실측 0.5 -> 17~18,
+      최종값의 60%). 그 구간 안의 tau 는 보간이 "라운드 0.54 에 도달" 같은 값을
+      내는데, 라운드는 서버가 어댑터를 모으는 최소 단위이므로 실행할 수 없는
+      값이다. 네 시드 모두 라운드 1 을 넘겨야 하므로 **max** 를 쓴다.
+      (라운드 0 을 하한으로 쓰면 25 점 격자의 15 점이 이 구간에 빠진다.)
+
+    상한 = min(최고값).
+      baseline 이 도달하지 못하는 tau 에서는 절감(= 라운드(d0) - 라운드(d))의
+      왼쪽 항이 없다. 그리고 탈락하는 시드는 무작위가 아니다 - 최고값이 낮은
+      시드부터 빠지므로, 남는 것은 **원래 잘한 시드**다. 실측에서 tau=29 는
+      시드 2, 4(최고 29.92, 30.66)만 남기고 1, 3(28.44, 28.14)을 버린다.
     """
-    starts, peaks = [], []
+    firsts, peaks = [], []
     for curve in curves:
-        values = [p[metric] for p in curve if p.get(metric) is not None]
-        if values:
-            starts.append(values[0])
-            peaks.append(max(values))
+        points = sorted(
+            ((p["round"], p[metric]) for p in curve if p.get(metric) is not None),
+            key=lambda rv: rv[0],
+        )
+        after_first = [v for r, v in points if r >= 1]
+        if after_first:
+            firsts.append(after_first[0])
+            peaks.append(max(after_first))
     if not peaks:
         return (0.0, 0.0)
-    return (max(starts), min(peaks))
+    return (max(firsts), min(peaks))
 
 
-def tau_grid(curves: Sequence[Sequence[dict]], points: int = 25, metric: str = "f1") -> List[float]:
+def tau_grid(curves: Sequence[Sequence[dict]], points: int = None, metric: str = "f1") -> List[float]:
+    """tau 격자를 **데이터가 정한다.** baseline 곡선의 평가점 값 자체를 쓴다.
+
+    균등 격자를 쓰면 간격을 사람이 정해야 하고("왜 25 점인가"), 곡선이 급한
+    구간에 점이 몰린다. 그리고 보간은 평가점 사이에서 직선이므로, 한 구간 안의
+    여러 tau 는 같은 직선 위에서 읽혀 **독립 정보가 아니다** - 곡선의 상승
+    구간 수가 쓸 수 있는 tau 의 상한이다(이 실험에서 16 개).
+
+    baseline 이 실제로 낸 값을 tau 로 쓰면 구간마다 정확히 하나씩 떨어지고,
+    격자를 선언할 필요가 없어진다. points 는 호환성을 위해 받지만 무시한다.
+    """
     low, high = attainable_range(curves, metric)
     if high <= low:
         return []
-    return list(np.linspace(low, high, points))
+    values = {
+        round(float(p[metric]), 4)
+        for curve in curves for p in curve
+        if p.get(metric) is not None and p.get("round", 0) >= 1
+        and low <= p[metric] <= high
+    }
+    return sorted(values)
 
 
 def mean_and_stderr(values: Sequence[Optional[float]]) -> Dict[str, Optional[float]]:
@@ -135,3 +166,77 @@ def final_scores(curves: Sequence[Sequence[dict]], metric: str = "f1") -> Dict:
         if values:
             finals.append(values[-1])
     return mean_and_stderr(finals)
+
+
+def matched_budget_table(
+    curves_by_depth: Dict[int, List[List[dict]]],
+    baseline_depth: int = 0,
+    metric: str = "f1",
+) -> List[dict]:
+    """**세로 읽기**: 같은 통신 예산에서의 metric 차이. tau 를 고르지 않는다.
+
+    가로 읽기(tau 를 고정하고 라운드를 읽는 것)는 tau 격자를 사람이 정해야 하고,
+    평가 노이즈가 **기울기로 나뉘어** 증폭된다. 실측 기울기는 r30->r40 에서
+    0.0065 F1/라운드이고 r50->r59 에서는 음수다. 노이즈 +-0.3 F1 이 거기서는
+    수십 라운드가 되고, 부호까지 뒤집힌다.
+
+    세로 읽기는 그 문제가 없다:
+      - 평가 스케줄이 예산을 이미 고정한다. 고를 격자가 없다.
+      - 노이즈가 측정된 축(metric)에 그대로 남는다 - 효과와 같은 단위로 비교된다.
+      - 곡선이 비단조여도 같은 라운드끼리 빼므로 영향이 없다.
+
+    연구 질문은 바이트 단위이므로 가로 읽기도 필요하지만, 1 차 결과는 이쪽이다.
+    두 읽기가 겹치는 구간에서 부호가 일치하는 것이 단일 tau 를 정당화하는 것보다
+    강한 근거가 된다.
+    """
+    baseline = curves_by_depth.get(baseline_depth) or []
+    if not baseline:
+        return []
+    rounds = sorted({p["round"] for p in baseline[0] if p.get(metric) is not None})
+    out = []
+    for rnd in rounds:
+        if rnd < 1:
+            continue
+        row = {"round": rnd}
+        base_at = [_at_round(c, rnd, metric) for c in baseline]
+        row["baseline_mean"] = mean_and_stderr(base_at)["mean"]
+        row["cumulative_bytes"] = next(
+            (p.get("cumulative_bytes") for p in baseline[0] if p["round"] == rnd), None
+        )
+        row["depths"] = {}
+        for depth, curves in sorted(curves_by_depth.items()):
+            if depth == baseline_depth or len(curves) != len(baseline):
+                continue
+            deltas = [
+                None if (a is None or b is None) else a - b
+                for a, b in zip((_at_round(c, rnd, metric) for c in curves), base_at)
+            ]
+            summary = mean_and_stderr(deltas)
+            se = summary.get("stderr")
+            summary["separated_from_zero"] = bool(
+                se and summary["mean"] is not None and abs(summary["mean"]) > 2 * se
+            )
+            row["depths"][str(depth)] = summary
+        out.append(row)
+    return out
+
+
+def _at_round(curve: Sequence[dict], rnd: int, metric: str) -> Optional[float]:
+    for p in curve:
+        if p.get("round") == rnd:
+            return p.get(metric)
+    return None
+
+
+def local_slope(curves: Sequence[Sequence[dict]], r0: int, r1: int, metric: str = "f1"):
+    """[r0, r1] 구간의 평균 기울기 (metric / 라운드). 세로 차이를 바이트로 바꿀 때 쓴다.
+
+    **단일 값으로 보고하면 안 된다.** 실측에서 추정 구간에 따라 3 배 이상
+    달라지고 부호도 뒤집힌다(r50->r59 는 음수). 호출부는 여러 구간에서 재서
+    범위로 보고해야 한다.
+    """
+    a = mean_and_stderr([_at_round(c, r0, metric) for c in curves])["mean"]
+    b = mean_and_stderr([_at_round(c, r1, metric) for c in curves])["mean"]
+    if a is None or b is None or r1 == r0:
+        return None
+    return (b - a) / (r1 - r0)
