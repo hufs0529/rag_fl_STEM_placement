@@ -24,10 +24,11 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from src.analysis.cost_model import (
-    break_even_surface, depth_cost, exchange_rate, saved_bytes,
+    break_even_bandwidth_mbps, break_even_surface, depth_cost, exchange_rate, saved_bytes,
 )
 from src.analysis.curves import (
-    curve_mean, final_scores, rounds_by_depth, tau_grid,
+    attainable_range, curve_mean, final_scores, local_slope, matched_budget_table,
+    rounds_by_depth, tau_grid,
 )
 from src.analysis.diagnostics import assess_mechanism, mean_divergence, mechanism_table
 from src.config import add_config_args, config_from_args
@@ -73,7 +74,8 @@ def main() -> int:
     payload = summaries_by_depth[baseline_depth][0]["payload_bytes_per_client_per_direction"]
 
     # --- 2-4) tau 스윕과 절감 바이트 ----------------------------------------
-    taus = tau_grid(curves_by_depth[baseline_depth], cfg.cost.tau_sweep_points, metric)
+    tau_low, tau_high = attainable_range(curves_by_depth[baseline_depth], metric)
+    taus = tau_grid(curves_by_depth[baseline_depth], metric=metric)
     print(f"\n  tau swept over the range the baseline attains: "
           f"{taus[0]:.2f} .. {taus[-1]:.2f} {metric.upper()} ({len(taus)} points)")
 
@@ -177,11 +179,53 @@ def main() -> int:
             str(d): final_scores(c, metric) for d, c in curves_by_depth.items()
         },
         "mean_curves": {str(d): curve_mean(c, metric) for d, c in curves_by_depth.items()},
+        # 1 차 결과: 같은 예산에서의 metric 차이. tau 를 고르지 않으므로
+        # "왜 그 tau 인가" 가 생기지 않고, 비단조 곡선에도 영향받지 않는다.
+        "matched_budget": matched_budget_table(curves_by_depth, baseline_depth, metric),
         "tau_sweep": sweep,
+        "tau_range": {"low": tau_low, "high": tau_high,
+                      "low_rule": "max over seeds of the baseline at round 1",
+                      "high_rule": "min over seeds of the baseline peak",
+                      "n_tau": len(taus),
+                      "grid_rule": "the baseline curves' own evaluated values"},
         "representative_tau": midpoint["tau"],
+        # 세로 차이를 바이트로 환산할 때 쓰는 기울기. **구간에 따라 3 배 이상
+        # 달라지고 부호도 뒤집히므로** 단일 값이 아니라 범위로 남긴다.
+        "baseline_slope_by_window": {
+            f"r{r0}_r{r1}": local_slope(curves_by_depth[baseline_depth], r0, r1, metric)
+            for r0, r1 in ((1, 10), (10, 20), (20, 30), (30, 40), (40, 50), (50, 59),
+                           (40, 59), (20, 59))
+        },
         "flops": {"per_pair": flops_per_pair, "per_passage": flops_per_passage,
                   "source": flops_source},
         "device_throughput_flops": throughput,
+        # throughput 은 배포 장치에 대한 **가정**이며 유도되지 않는다. 환율의
+        # 분모이므로 2 배 틀리면 손익분기 대역폭이 2 배 틀린다. 가정 하나로
+        # 보고하지 않고 흔들어 함께 남긴다.
+        # 환율(bytes/FLOP)은 throughput 과 무관하다 - 분모가 FLOPs 다. throughput 은
+        # 손익분기 **대역폭**에만, 그리고 선형으로 들어간다:
+        #   B* = saved x 8 x T / flops   ->  T 가 2 배면 B* 도 2 배
+        # 그래서 민감도는 재계산이 아니라 그 선형성을 명시해 남긴다.
+        "throughput_sensitivity": {
+            "note": "break-even bandwidth is linear in device_throughput_flops; "
+                    "the exchange rate in bytes/FLOP does not depend on it",
+            "assumed": throughput,
+            "variants": {
+                f"{factor:g}x": {
+                    "device_throughput_flops": throughput * factor,
+                    "break_even_bandwidth_multiplier": factor,
+                    "break_even_bandwidth_mbps": {
+                        key: (None if rates[key]["bytes_per_flop"] is None else
+                              break_even_bandwidth_mbps(
+                                  rates[key]["saved_bytes"],
+                                  rates[key]["total_flops"],
+                                  throughput * factor))
+                        for key in rates
+                    },
+                }
+                for factor in (0.5, 1.0, 2.0)
+            },
+        },
         "exchange_rates": rates,
         "break_even_surfaces": surfaces,
         "mechanism": {**table, **mechanism},
@@ -189,6 +233,41 @@ def main() -> int:
     save_json(report, log_dir / "analysis" / "exchange_rate.json")
 
     # --- 출력 ---------------------------------------------------------------
+    banner("matched-budget reading (primary: no tau to choose)")
+    print("  same bytes spent, difference in " + metric.upper()
+          + "; * = mean exceeds twice its standard error")
+    for row in report["matched_budget"]:
+        if row["round"] not in (1, 5, 10, 15, 20, 30, 40, 50, 59):
+            continue
+        cells = []
+        for depth, info in row["depths"].items():
+            if info["mean"] is None:
+                cells.append(f"d{depth}: n/a")
+                continue
+            se = info["stderr"]
+            star = "*" if info["separated_from_zero"] else " "
+            cells.append(f"d{depth}:{info['mean']:+5.2f}"
+                         + (f"+-{se:.2f}{star}" if se is not None else f"{star}"))
+        gb = (row["cumulative_bytes"] or 0) / 1e9
+        print(f"  r{row['round']:>2}  {gb:6.4f} GB  base {row['baseline_mean']:6.2f}   "
+              + "  ".join(cells))
+
+    banner(f"tau range [{tau_low:.2f}, {tau_high:.2f}] from {len(taus)} attained values")
+    print("  low  = max over seeds of the baseline at round 1 "
+          "(below it, interpolation lands inside round 1, which cannot be run)")
+    print("  high = min over seeds of the baseline peak "
+          "(above it the weaker seeds drop out and only the strong ones remain)")
+    print("  grid = the baseline curves' own evaluated values, so no spacing is declared")
+
+    banner("baseline slope, used to convert a matched-budget gain into bytes")
+    print("  reported as a range: the window changes the answer severalfold "
+          "and can flip its sign")
+    for window, slope in report["baseline_slope_by_window"].items():
+        if slope is None:
+            continue
+        note = "  <- negative: conversion undefined here" if slope <= 0 else ""
+        print(f"  {window:>10}  {slope:+8.4f} {metric}/round{note}")
+
     banner("what the fixed budget bought")
     for depth in sorted(curves_by_depth):
         stats = report["final_scores_at_fixed_budget"][str(depth)]
