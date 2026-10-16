@@ -31,6 +31,35 @@ each spending an identical communication budget with no early stopping.
 
 One run is 59 × 8 = 472 client training episodes, so the sweep is 7,552 of them.
 
+### Why sixteen and not twenty
+
+The matrix was 4 × 5 = 20 while Weeks 1–3 were written. It was reduced to cut the
+sweep's wall clock, and sixteen is the number because it is the only balanced
+matrix below twenty.
+
+Seeds are assigned to the two topic partitions alternately, so only an even seed
+count uses both equally. Five seeds give partition 1001 three runs per depth and
+1002 two; three seeds give 2:1; four give 2:2. Fifteen is not a matrix at all —
+four does not divide fifteen, and stopping a seed-major sweep there omits
+`d50_s4`, the strongest treatment cell.
+
+So the reduction also corrects an imbalance the original plan carried: at five
+seeds the depth effect would have been measured under one partition more often
+than the other.
+
+| Matrix | Runs | Partition split per depth | Measured cost at 84.8 min/run |
+|---|---|---|---|
+| 4 × 3 | 12 | 2 : 1 — unbalanced | 17.0 h |
+| **4 × 4** | **16** | **2 : 2 — balanced** | **22.6 h** |
+| 4 × 5 | 20 | 3 : 2 — unbalanced | 28.3 h |
+| 4 × 6 | 24 | 3 : 3 — balanced | 33.9 h |
+
+The cost of four seeds rather than five is a standard error about 12 % wider
+(√5⁄√4); the saving is 5.7 hours of GPU time. Should four prove too few, the
+matrix extends to 4 × 6 = 24 — the next balanced point — without repeating
+anything: seed is the outer loop and completed runs are skipped, so only the
+eight new runs execute.
+
 The primary artefacts are the sixteen learning curves, `results/logs/runs/*.jsonl`,
 580 KB, now under version control. They are the only input the Subtask 1.4
 analysis reads.
@@ -144,6 +173,14 @@ was scored on the same context.
 Answer F1 and exact match on the fixed 1,000-question held-out set after the full
 budget was spent. These are the logged values, reported as data; the comparison
 between depths belongs to Subtask 1.4.
+
+The partition column records which of the two topic allocations the run used.
+They hold slightly different numbers of questions per client — 9,844 under seed
+1001 and 9,742 under 1002 — because equality within a partition is enforced by
+trimming every client to the size of the smallest, and the seed drives both the
+topic clustering and the allocation of clusters to clients. The 1.0 % difference
+is a level shift between partitions, not a factor in the depth comparison, which
+is made within a seed.
 
 | Run | Partition | F1 | EM | Minutes |
 |---|---|---|---|---|
