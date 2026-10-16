@@ -27,9 +27,24 @@ def transformer_forward_flops(
     return flops
 
 
+# 2 x params x tokens 의 params 는 **연산에 참여하는** 파라미터여야 한다.
+# 임베딩 행렬은 gather 로 읽히고 행렬곱에 들어가지 않으므로 FLOPs 를 거의 내지
+# 않는데, 작은 모델에서는 그것이 파라미터의 절반을 차지한다. 전체 수를 넣으면
+# 비용을 2 배 넘게 과대계상하고, 그 값이 환율의 **분모**이므로 결론을 직접 왜곡한다.
+#
+#   ms-marco-MiniLM-L-6-v2   전체 22,713,601 | 임베딩 11,917,824 (52%) | 연산 10,795,777
+#   bge-small-en-v1.5        전체 33,360,000 | 임베딩 11,917,824 (36%) | 연산 21,442,176
+#
+# (두 모델의 임베딩 수가 같은 것은 같은 30,522 단어 WordPiece 사전과 hidden 384
+#  를 쓰기 때문이다.)
+
+CE_TOKENS = 256          # 질문 + 100-word passage 의 실제 평균에 가깝다
+EMBED_TOKENS = 128
+
+
 def cross_encoder_flops_per_pair(
-    n_params: int = 22_700_000,      # ms-marco-MiniLM-L-6-v2
-    n_tokens: int = 256,             # 질문 + 100-word passage 의 실제 평균에 가깝다
+    n_params: int = 10_795_777,      # ms-marco-MiniLM-L-6-v2, 임베딩 제외
+    n_tokens: int = CE_TOKENS,
     n_layers: int = 6,
     hidden: int = 384,
 ) -> float:
@@ -38,8 +53,8 @@ def cross_encoder_flops_per_pair(
 
 
 def embedder_flops_per_passage(
-    n_params: int = 33_400_000,      # bge-small-en-v1.5
-    n_tokens: int = 128,
+    n_params: int = 21_442_176,      # bge-small-en-v1.5, 임베딩 제외
+    n_tokens: int = EMBED_TOKENS,
     n_layers: int = 12,
     hidden: int = 384,
 ) -> float:
@@ -63,12 +78,33 @@ def measure_forward_flops(model, sample_inputs, device: str = None) -> Optional[
         return None
 
 
-def describe(measured: Optional[float], analytic: float, label: str) -> Dict:
-    """실측/추정 중 무엇을 썼는지 명시해 결과에 남긴다."""
-    return {
+def describe(
+    measured: Optional[float], analytic: float, label: str,
+    n_tokens_measured: Optional[int] = None, n_tokens_assumed: Optional[int] = None,
+) -> Dict:
+    """실측/추정 중 무엇을 썼는지, 그리고 둘이 얼마나 벌어졌는지 남긴다.
+
+    두 값이 크게 벌어지면 **조용히 한쪽을 쓰면 안 된다.** 이 값은 환율의 분모라서
+    배수 오차가 결론을 그대로 뒤집는다. 실제로 한 번 그렇게 벌어졌다: 실측은
+    66 토큰 샘플에서 재고 추정식은 256 토큰을 가정해 3.9 배, 추정식이 임베딩
+    파라미터까지 세어 2.1 배, 합쳐 8.7 배였다.
+    """
+    out = {
         "label": label,
         "flops": float(measured if measured else analytic),
         "source": "measured" if measured else "analytic",
         "analytic_estimate": analytic,
         "measured_estimate": measured,
+        "n_tokens_assumed": n_tokens_assumed,
+        "n_tokens_measured": n_tokens_measured,
     }
+    if measured and analytic:
+        ratio = max(measured, analytic) / min(measured, analytic)
+        out["measured_over_analytic"] = measured / analytic
+        out["agree_within_2x"] = ratio < 2.0
+        if ratio >= 2.0:
+            out["warning"] = (
+                f"측정과 추정이 {ratio:.1f} 배 벌어졌다. 이 값은 환율의 분모이므로 "
+                "토큰 수와 파라미터 집계를 확인할 것"
+            )
+    return out

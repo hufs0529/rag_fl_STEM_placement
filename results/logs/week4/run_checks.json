@@ -1,0 +1,34 @@
+{
+  "integrity": {
+    "runs_expected": 16,
+    "runs_complete": 16,
+    "identical_budget": true,
+    "issues": [],
+    "total_bytes": [
+      1739980800
+    ]
+  },
+  "treatment": {
+    "0": {
+      "mean_promotion_rate": 0.0,
+      "runs": 4,
+      "missing": 0
+    },
+    "3": {
+      "mean_promotion_rate": 0.0,
+      "runs": 4,
+      "missing": 0
+    },
+    "10": {
+      "mean_promotion_rate": 0.42017640780679183,
+      "runs": 4,
+      "missing": 0
+    },
+    "50": {
+      "mean_promotion_rate": 0.5252270193784124,
+      "runs": 4,
+      "missing": 0
+    }
+  },
+  "problems": []
+}

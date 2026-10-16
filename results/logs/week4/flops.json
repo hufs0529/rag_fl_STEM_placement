@@ -1,0 +1,33 @@
+{
+  "rerank": {
+    "label": "cross-encoder/ms-marco-MiniLM-L-6-v2",
+    "flops": 5437490432.0,
+    "source": "measured",
+    "analytic_estimate": 6131417600.0,
+    "measured_estimate": 5437490432.0,
+    "n_tokens_assumed": 256,
+    "n_tokens_measured": 256,
+    "measured_over_analytic": 0.8868243507015409,
+    "agree_within_2x": true
+  },
+  "embed": {
+    "label": "BAAI/bge-small-en-v1.5",
+    "flops": 5437391104.0,
+    "source": "measured",
+    "analytic_estimate": 5791186944.0,
+    "measured_estimate": 5437391104.0,
+    "n_tokens_assumed": 128,
+    "n_tokens_measured": 128,
+    "measured_over_analytic": 0.9389078882410189,
+    "agree_within_2x": true
+  },
+  "throughput": {
+    "rerank_pairs_per_second": 20.34411789408229,
+    "device": "cpu",
+    "pairs_per_batch": 64,
+    "repeats": 5,
+    "tokens_per_pair": 256,
+    "method": "2 warmup passes, then timed repeats with device sync"
+  },
+  "note": "Cached rerank scores are an implementation optimisation; the cost model charges the deployment-time per-query cost using these figures."
+}

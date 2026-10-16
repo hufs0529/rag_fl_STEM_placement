@@ -35,6 +35,20 @@ results/logs/
 # 보고서가 인용하는 측정 요약이고 수십 KB 다. sweep.pid 는 아래에서 계속 제외한다.
 !results/logs/week4/
 !results/logs/week4/*.json
+# 본실험 16 run 의 학습 곡선과 요약. 이것이 Week 4 의 **1 차 산출물**이고
+# Week 5 분석이 읽는 유일한 입력이다(analyze_exchange_rate.py 는
+# results/logs 만 읽는다). 16 jsonl + 16 summary 로 580 KB 이며, gates/ 와
+# week2/ 를 추적하는 것과 같은 성격이다.
+#
+# 추적하지 않으면 22.6 시간의 산출물이 인스턴스 한 대에만 남는다 - Week 3 의
+# d10_s1.jsonl 을 그렇게 잃었다.
+#
+# 완료된 run 이 저장소에 들어오면 run_main_runs 의 pending() 이 그것을
+# 건너뛴다. 16 run 이 모두 같은 설정(batch 8 x 누적 1)이므로 그것이 올바른
+# 재개 동작이고, 설정이 다른 run 이 섞이면 check_runs.py 가 잡는다.
+!results/logs/runs/
+!results/logs/runs/*.jsonl
+!results/logs/runs/*.json
 results/logs/**/*.npz
 results/logs/**/*.npy
 *.log

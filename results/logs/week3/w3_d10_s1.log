@@ -1,0 +1,78 @@
+
+========================================================================
+run d10_s1 | depth 10 seed 1 | partition 1001 | K=32 R=59
+========================================================================
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+[transformers] `torch_dtype` is deprecated! Use `dtype` instead!
+Loading weights:   0%|          | 0/272 [00:00<?, ?it/s]Loading weights: 100%|██████████| 272/272 [00:00<00:00, 4221.09it/s]
+  LoRA: 921,600 trainable / 135,436,608 total (1.84 MB per client per direction)
+  client 0: 9,728 training examples (rank-change 0.669, promotion 0.420)
+  client 1: 9,701 training examples (rank-change 0.670, promotion 0.411)
+  client 2: 9,708 training examples (rank-change 0.677, promotion 0.423)
+  client 3: 9,716 training examples (rank-change 0.682, promotion 0.424)
+  client 4: 9,727 training examples (rank-change 0.664, promotion 0.410)
+  client 5: 9,731 training examples (rank-change 0.673, promotion 0.414)
+  client 6: 9,724 training examples (rank-change 0.681, promotion 0.425)
+  client 7: 9,717 training examples (rank-change 0.697, promotion 0.435)
+  held-out evaluation set: 1,000 questions (context fixed at d=0 for every condition)
+  round 0 (untrained): F1 0.54 EM 0.20
+  round   1/59  loss 2.4520  drift 0.3426     29.5 MB  | F1 18.05  EM 12.00
+  round   2/59  loss 1.7949  drift 0.7737     59.0 MB  | F1 21.56  EM 14.30
+  round   3/59  loss 1.7005  drift 1.1141     88.5 MB  | F1 22.40  EM 15.40
+  round   4/59  loss 1.6606  drift 1.3489    118.0 MB  | F1 22.51  EM 15.70
+  round   5/59  loss 1.5982  drift 1.4015    147.5 MB  | F1 23.13  EM 16.50
+  round   6/59  loss 1.6410  drift 1.5064    176.9 MB  | F1 23.82  EM 16.80
+  round   7/59  loss 1.6743  drift 1.4696    206.4 MB  | F1 24.05  EM 17.00
+  round   8/59  loss 1.5929  drift 1.6228    235.9 MB  | F1 24.13  EM 17.50
+  round   9/59  loss 1.5481  drift 1.9199    265.4 MB  | F1 24.35  EM 17.20
+  round  10/59  loss 1.5647  drift 1.8928    294.9 MB  | F1 24.64  EM 17.80
+  round  11/59  loss 1.5989  drift 1.9283    324.4 MB
+  round  12/59  loss 1.5666  drift 1.8736    353.9 MB
+  round  13/59  loss 1.5179  drift 1.9761    383.4 MB
+  round  14/59  loss 1.5262  drift 2.0464    412.9 MB
+  round  15/59  loss 1.5786  drift 2.1204    442.4 MB  | F1 26.08  EM 19.00
+  round  16/59  loss 1.5693  drift 2.1285    471.9 MB
+  round  17/59  loss 1.5626  drift 2.1772    501.4 MB
+  round  18/59  loss 1.5444  drift 2.0953    530.8 MB
+  round  19/59  loss 1.5771  drift 2.2465    560.3 MB
+  round  20/59  loss 1.4999  drift 2.2856    589.8 MB  | F1 26.80  EM 19.80
+  round  21/59  loss 1.5300  drift 2.2383    619.3 MB
+  round  22/59  loss 1.5114  drift 2.2705    648.8 MB
+  round  23/59  loss 1.5067  drift 2.3263    678.3 MB
+  round  24/59  loss 1.4406  drift 2.1921    707.8 MB
+  round  25/59  loss 1.5442  drift 2.3645    737.3 MB  | F1 26.52  EM 19.30
+  round  26/59  loss 1.4374  drift 2.3311    766.8 MB
+  round  27/59  loss 1.4633  drift 2.3689    796.3 MB
+  round  28/59  loss 1.4967  drift 2.3885    825.8 MB
+  round  29/59  loss 1.5053  drift 2.3189    855.2 MB
+  round  30/59  loss 1.4595  drift 2.4601    884.7 MB  | F1 27.26  EM 20.30
+  round  31/59  loss 1.5162  drift 2.3963    914.2 MB
+  round  32/59  loss 1.4676  drift 2.3956    943.7 MB
+  round  33/59  loss 1.4725  drift 2.4181    973.2 MB
+  round  34/59  loss 1.4593  drift 2.4235   1002.7 MB
+  round  35/59  loss 1.5072  drift 2.4458   1032.2 MB  | F1 26.94  EM 19.70
+  round  36/59  loss 1.4774  drift 2.4344   1061.7 MB
+  round  37/59  loss 1.4824  drift 2.4823   1091.2 MB
+  round  38/59  loss 1.4394  drift 2.4538   1120.7 MB
+  round  39/59  loss 1.4438  drift 2.4448   1150.2 MB
+  round  40/59  loss 1.4573  drift 2.4549   1179.6 MB  | F1 27.19  EM 20.10
+  round  41/59  loss 1.4194  drift 2.3850   1209.1 MB
+  round  42/59  loss 1.4284  drift 2.4752   1238.6 MB
+  round  43/59  loss 1.3662  drift 2.4872   1268.1 MB
+  round  44/59  loss 1.4399  drift 2.4892   1297.6 MB
+  round  45/59  loss 1.4819  drift 2.3614   1327.1 MB  | F1 28.41  EM 21.70
+  round  46/59  loss 1.4389  drift 2.4862   1356.6 MB
+  round  47/59  loss 1.4160  drift 2.5594   1386.1 MB
+  round  48/59  loss 1.4108  drift 2.4316   1415.6 MB
+  round  49/59  loss 1.4621  drift 2.5385   1445.1 MB
+  round  50/59  loss 1.4412  drift 2.4325   1474.6 MB  | F1 28.43  EM 21.40
+  round  51/59  loss 1.3959  drift 2.4107   1504.1 MB
+  round  52/59  loss 1.4164  drift 2.5034   1533.5 MB
+  round  53/59  loss 1.4545  drift 2.4115   1563.0 MB
+  round  54/59  loss 1.4549  drift 2.4771   1592.5 MB
+  round  55/59  loss 1.4939  drift 2.4791   1622.0 MB  | F1 28.47  EM 21.50
+  round  56/59  loss 1.4350  drift 2.5029   1651.5 MB
+  round  57/59  loss 1.4744  drift 2.4988   1681.0 MB
+  round  58/59  loss 1.4234  drift 2.5307   1710.5 MB
+  round  59/59  loss 1.4532  drift 2.4763   1740.0 MB  | F1 28.94  EM 21.90
+  done: F1 28.94 EM 21.90 | 1740.0 MB communicated over 59 rounds

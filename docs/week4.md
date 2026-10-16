@@ -83,6 +83,47 @@ python scripts/check_runs.py                  # post-hoc integrity check
 python scripts/measure_flops.py               # cost-model inputs for Week 5
 ```
 
+### The FLOPs per pair is the denominator of the exchange rate
+
+A factor error here scales the verdict directly, and the first measurement
+carried two, in opposite directions.
+
+The analytic estimate used `2 × params × tokens` over all 22.7M parameters of
+`ms-marco-MiniLM-L-6-v2`, but 11.9M of those (52 %) are the embedding matrix,
+which is read by a gather and never enters a matmul. That overcounted by 2.1×.
+The measured figure was taken on an unpadded sample that tokenises to 66 tokens
+while the estimate assumes 256, which undercounted by 3.9×. Together the two
+numbers sat 8.7× apart and `describe` silently preferred the measured one, so
+the cost model would have charged reranking about a ninth of its real compute
+and made it look that much more favourable.
+
+Both are fixed: the parameter counts exclude embeddings (10.8M for the reranker,
+21.4M for the embedder), the measurement pads to the same token count the
+estimate assumes, and `describe` records both token counts and warns when the
+two diverge by 2× or more. They now agree to 11 % for the reranker and 6 % for
+the embedder — the remainder is the profiler not counting layernorm, softmax and
+elementwise work.
+
+`torch.profiler`'s `with_flops` was verified to report 2×MAC, i.e. true FLOPs,
+so no factor-of-two correction applies.
+
+### Throughput needs a device sync
+
+`rerank_pairs_per_second` was timed around a single un-warmed forward with no
+`torch.cuda.synchronize()`. CUDA kernels queue asynchronously, so the call
+returns before the work finishes and that one pass also carries the host-to-device
+transfer and kernel compilation. It produced 81 pairs/s on an A10G against 84 on
+a laptop CPU; a GPU reading below a CPU is a measurement fault, not a result.
+The timing now warms up twice, repeats, and synchronises, and records the batch
+size, repeat count and tokens per pair. **The A10G figure recorded during Week 4
+predates this fix and should not be used**; it needs re-measuring on the target
+device before the cost model's `device_throughput_flops` assumption can be
+checked against it.
+
+```bash
+python scripts/measure_flops.py --device cuda --pairs 64 --repeats 5
+```
+
 ---
 
 ## Execution order is a design decision
