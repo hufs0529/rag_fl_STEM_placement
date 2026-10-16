@@ -72,6 +72,17 @@ data:
   #
   # (이전에 eval_split: validation 키가 있었지만 어떤 코드도 읽지 않았다. 설정이
   #  동작과 다르면 설정을 믿은 사람이 틀리게 되므로 지웠다.)
+  # 1,000 은 선언된 값이고 유도되지 않는다. 이 크기가 평가 노이즈를 정한다:
+  # 후반 곡선에서 라운드 간 하강이 -0.03 ~ -1.38 F1 관측되는데, 그 구간에서
+  # 학습 손실은 계속 내려가므로 실제 성능 저하가 아니라 평가 노이즈다.
+  #
+  # 다만 **전 조건이 같은 1,000 질문으로 채점되므로** 어떤 질문이 뽑혔는지에서
+  # 오는 노이즈는 쌍체 비교에서 상쇄된다. 실측: 절대 F1 의 시드 간 표준편차는
+  # 0.61 F1 인데, 같은 시드 안에서 뺀 쌍체 차이의 s.e. 는 0.01~0.48(중앙값
+  # 0.17) 로 약 4 배 작다. 그래서 조건 간 효과(+0.5~0.8 F1)가 읽힌다.
+  #
+  # 키우면(3,000) 노이즈는 줄지만 평가가 라운드당 36 초에서 약 108 초가 되어
+  # 16 run 스윕이 22.6 -> 약 32 시간이 된다. 보고서는 이 크기를 한계로 명시한다.
   eval_set_size: 1000
 
   # 코퍼스에 넣을 질문 수 상한. null 이면 사용 가능 질문을 전부 쓴다.
@@ -98,6 +109,11 @@ retrieval:
   embedding_model: BAAI/bge-small-en-v1.5
   embedding_dim: 384
   query_prefix: "Represent this sentence for searching relevant passages: "
+  # 50 은 선언된 값이다. 풀을 키우면 천장이 올라가지만(게이트 2 실측:
+  # 50 -> 0.669, 100 -> 0.721, 200 -> 0.774) 재순위 FLOPs 가 풀 크기에 비례하고
+  # 그 FLOPs 가 환율의 **비용 쪽**이다. 즉 풀을 키우는 것은 천장과 비용을 같이
+  # 올리는 거래이고, 50 은 그 거래의 한 점이다. pool_scan 으로 기록해 두었으므로
+  # 다른 점을 골랐을 때 어떻게 달라지는지 보고서가 인용할 수 있다.
   candidate_pool: 50                  # 모든 depth 가 공유하는 공통 후보 풀 / common pool
   top_k: 3                            # 프롬프트에 들어가는 passage 수 (모든 조건 동일)
   vector_store: qdrant
@@ -118,6 +134,10 @@ treatment:
   # d=3 is the control: it reorders the 3 passages dense retrieval already
   # selected without promoting new ones, separating an ordering effect from a
   # genuine retrieval-quality effect.
+  # 네 값 중 셋은 설계가 정한다: 0 은 기준선, 3 은 top_k 와 같아야 순서 통제가
+  # 성립하고(그 값에서만 promotion=0 과 rank_change>0 이 동시에 성립),
+  # 50 은 candidate_pool 전체다. **10 만 자유 선택**이며 3 과 50 사이에 대략
+  # 등비로 놓았다 - 이 값은 유도되지 않으므로 보고서의 한계에 적는다.
   depths: [0, 3, 10, 50]
   # 시드 수는 **짝수여야 한다.** partition_seed_for 가 시드를 두 토픽 파티션
   # (1001/1002)에 번갈아 배정하므로, 홀수면 한쪽 파티션이 한 번 더 들어가
