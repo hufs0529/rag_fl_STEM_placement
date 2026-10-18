@@ -68,32 +68,13 @@ analysis reads.
 
 ## 2. Execution
 
-### 2.1 The batch setting was measured, not assumed
-
-The effective batch is `batch_size × grad_accumulation` and is fixed at 8 by the
-Week 1 calibration: changing that product changes `S = (questions per client ÷
-effective batch) × passes` and therefore `R = S / K`. How the 8 is split does not
-change the budget, only the speed.
-
-Weeks 1–3 ran at batch 2 × accumulation 4, which was forced by CPU memory. On the
-GPU that split performs four forward and backward passes per optimiser step and
-pays the fixed per-pass cost four times. Measured before committing to the sweep:
-
-| Setting | GPU utilisation | Per round | Per run |
-|---|---|---|---|
-| batch 2 × accum 4 | 39 % | 160 s | 171 min |
-| **batch 8 × accum 1** | **100 %** | **~110 s** | **84.8 min** |
-
-The sweep ran at 8 × 1. Every run's manifest records the split, so the choice is
-verifiable after the fact rather than remembered.
-
-### 2.2 Order of execution is a design decision
+### 2.1 Order of execution is a design decision
 
 Runs are ordered **seed outer, depth inner**, so an interrupted sweep still holds
 all four conditions for every finished seed. Ordering by depth would leave four
 baselines and nothing to compare them against.
 
-### 2.3 Concurrency and resumption
+### 2.2 Concurrency and resumption
 
 Only one sweep may run at a time: two processes would write interleaved rounds
 into the same curve file and load the model onto the GPU twice. A pid lock
@@ -115,8 +96,8 @@ the sixteen runs and checks the treatment diagnostics. The recorded result:
 ```
 
 `total_bytes` is a **set**, and it holds one value. Rounds, client count, payload
-size, local steps per round, batch size, accumulation and examples per step are
-compared the same way, as is the evaluation schedule. A field recorded for some
+size, local steps per round and the optimiser settings are compared the same
+way, as is the evaluation schedule. A field recorded for some
 runs but not others is itself reported as an issue, so a run predating a field
 cannot pass unnoticed.
 
@@ -170,17 +151,43 @@ was scored on the same context.
 
 ## 4. Recorded outcomes
 
+### What F1 and EM measure
+
+Both score the model's generated answer against the reference answers, after the
+official Natural Questions normalisation — lowercase, strip punctuation, drop the
+articles *a*, *an* and *the*, collapse whitespace.
+
+**Exact match (EM)** is 1 if the normalised strings are identical and 0 otherwise.
+**Answer F1** is the token overlap: the harmonic mean of how much of what the
+model said appears in the reference, and how much of the reference the model
+said. Where a question carries several acceptable answers, the score is the best
+one.
+
+| Model's answer | Reference | F1 | EM |
+|---|---|---|---|
+| `The Barack Obama` | Barack Obama | **1.000** | **1** |
+| `Barack Hussein Obama` | Barack Obama | **0.800** | 0 |
+| `Obama` | Barack Obama | **0.667** | 0 |
+| `Donald Trump` | Barack Obama | 0.000 | 0 |
+
+`Barack Hussein Obama` shares two of its three tokens with the two-token
+reference, giving precision 2/3 and recall 2/2, so F1 is 0.800 while EM is 0.
+Both are reported on the conventional 0–100 scale, so an F1 of 29.13 means the
+mean per-question F1 was 0.2913 and an EM of 22.32 means 22.32 % of the thousand
+questions were answered exactly.
+
+F1 is the primary metric because it is continuous and therefore interpolates
+stably; EM is a step function and would make any rounds-to-target estimate jump.
+EM is recorded alongside because F1 alone invites the objection that a score rose
+only through incidental token overlap — if EM moves with it, the model is getting
+answers right rather than merely close. EM cannot exceed F1: an exact match
+scores 1 on both.
+
+### The sixteen recorded results
+
 Answer F1 and exact match on the fixed 1,000-question held-out set after the full
 budget was spent. These are the logged values, reported as data; the comparison
 between depths belongs to Subtask 1.4.
-
-The partition column records which of the two topic allocations the run used.
-They hold slightly different numbers of questions per client — 9,844 under seed
-1001 and 9,742 under 1002 — because equality within a partition is enforced by
-trimming every client to the size of the smallest, and the seed drives both the
-topic clustering and the allocation of clusters to clients. The 1.0 % difference
-is a level shift between partitions, not a factor in the depth comparison, which
-is made within a seed.
 
 | Run | Partition | F1 | EM | Minutes |
 |---|---|---|---|---|
@@ -217,7 +224,48 @@ paired within a seed, where that spread cancels.
 
 ---
 
-## 5. Cost-model inputs measured for Subtask 1.4
+## 5. Why the two partitions hold different numbers of questions
+
+The results table records which topic allocation each run used. The two hold
+9,844 and 9,742 questions per client, a difference of 102 or 1.0 %. The reason is
+worth setting out, because it looks at first like an inconsistency.
+
+**Step 1 — questions are grouped by topic.** The partition seed is the
+`random_state` of the k-means clustering, so a different seed cuts the clusters
+differently: which passages end up in one group changes.
+
+**Step 2 — the clusters are dealt out to eight clients.** Clusters are not the
+same size, so the clients do not come out even. The passage counts, which are
+recorded without any trimming, show how uneven:
+
+| Seed | Passages per client | Spread |
+|---|---|---|
+| 1001 | 26219, 26870, 25404, 23942, 25058, 22026, 25331, 25150 | 22,026–26,870, **22 %** |
+| 1002 | 25695, 28164, 24899, 23411, 22710, 26977, 23100, 25044 | 22,710–28,164, **24 %** |
+
+Question counts come out uneven in the same way.
+
+**Step 3 — every client is trimmed to the smallest.** Equality is enforced by
+cutting all eight down to whatever the least-loaded client holds. The common size
+is therefore *the size of the smallest client*, and that is what the clustering
+happens to produce.
+
+**Step 4 — the smallest client differs between the two seeds.** 9,844 under 1001,
+9,742 under 1002. Trimming discards 1,968 questions (2.4 %) from the first
+partition and 2,784 (3.4 %) from the second.
+
+The trimming is deliberate. Unequal clients destabilise the FedAvg average,
+because a client with more data pulls the mean further, and that instability
+would act as a second varying factor alongside depth. Paying 2,784 discarded
+questions buys `question_size_spread: 0`.
+
+The 1.0 % difference between partitions does not reach the depth comparison.
+Runs sharing a seed share a partition, and the comparison is made within a seed,
+so the figure is the same on both sides of the subtraction and cancels.
+
+---
+
+## 6. Cost-model inputs measured for Subtask 1.4
 
 `scripts/measure_flops.py` fixes the per-pair reranking cost that the cost model
 charges. Two errors were found and corrected before the figures were used.
@@ -254,7 +302,7 @@ target device.
 
 ---
 
-## 6. Limitations visible in this week's data
+## 7. Limitations visible in this week's data
 
 Stated here rather than discovered at the end.
 
@@ -267,14 +315,6 @@ can be reported without extrapolating.
 rounds by as much as 1.38 F1 late in training while training loss continues to
 fall, so those dips are evaluation noise rather than overfitting. Overfitting
 would also be surprising at 1.53 passes over each client's data.
-
-**The 1,000-question evaluation set sets the noise floor.** Absolute F1 varies
-0.61 F1 across seeds. Because every condition is scored on the *same* 1,000
-questions, the noise from which questions were drawn cancels in a paired
-comparison: the standard error of the paired difference runs 0.01–0.48 F1,
-median 0.17, about four times smaller. Enlarging the set to 3,000 would cut the
-noise further but take evaluation from 36 s to roughly 108 s per scheduled round,
-turning a 22.6-hour sweep into about 32 hours.
 
 **Three of the four depths are forced; `d = 10` is not.** `d = 0` is the
 baseline, `d = 3` must equal `top_k` for the ordering control to exist, and
@@ -292,7 +332,7 @@ and standard errors are reported and no significance test is claimed.
 
 ---
 
-## 7. Status
+## 8. Status
 
 Subtask 1.3 is complete. The sixteen curves exist, were bought with an identical
 budget, and the budget's identity and the treatment's effect are both verified
