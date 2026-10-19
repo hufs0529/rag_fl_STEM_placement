@@ -151,3 +151,19 @@ def test_figures_are_produced_from_the_analysis_json(analysis_workspace):
     figures = tmp_path / "figures"
     for name in ("learning_curves.png", "saving_vs_tau.png", "break_even.png", "mechanism.png"):
         assert (figures / name).exists() and (figures / name).stat().st_size > 0
+
+
+def test_every_configured_depth_has_a_plot_colour():
+    """설정에 깊이를 추가하고 색을 안 넣으면, matplotlib 이 기본 순환 색을 써서
+    다른 깊이와 같은 색이 나오고도 그림은 조용히 그려진다."""
+    import importlib.util
+    spec = importlib.util.spec_from_file_location(
+        "plot_results", ROOT / "scripts" / "plot_results.py")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    missing = [d for d in DEPTHS if d not in mod.COLOURS]
+    assert not missing, f"색이 없는 깊이: {missing}"
+    assigned = [mod.COLOURS[d] for d in DEPTHS]
+    assert len(set(assigned)) == len(assigned), f"색이 중복됐다: {assigned}"
+    with pytest.raises(KeyError):
+        mod._colour(999)
