@@ -28,11 +28,45 @@ import numpy as np
 from src.config import add_config_args, config_from_args
 from src.logging_utils import banner, load_json
 
-COLOURS = {0: "#444444", 3: "#1f77b4", 10: "#ff7f0e", 50: "#d62728"}
+# 깊이는 순서가 있지만, 이 그림들이 하는 일은 **정체성**(어느 곡선이 어느 조건인지)
+# 이다. 단일 색조 램프로 4 단계를 쓰면 light 표면에서 인접 단계의 normal-vision
+# 분리도가 기준 15 를 넘지 못한다(실측 최선 14.5) - 그래서 처리 조건에는 검증된
+# 범주형 순서를 쓰고, 순서 정보는 범례 순서가 나른다.
+#
+# d=0 은 계열이 아니라 **기준선**이므로 중립 회색으로 둔다.
+# 처리 5조건은 범주형 슬롯 1-5 를 깊이 오름차순으로 고정 배정한다(값에 묶이므로
+# 조건이 늘거나 줄어도 색이 바뀌지 않는다).
+#
+# 검증(light, 표면 #fcfcfb): 슬롯 1-8 전 항목 통과. 최악 인접 CVD dE 9.1,
+# normal-vision dE 19.6. 세 색이 표면 대비 3:1 미만이라 **relief 규칙**이 걸리는데,
+# 범례가 항상 있고 make_report.py 가 같은 수치를 표로 내보내므로 충족된다.
+COLOURS = {
+    0: "#52514e",    # 기준선 - 중립 회색 (계열이 아니라 참조선)
+    3: "#2a78d6",    # 순서 통제   | 아래는 범주형 슬롯 1-7 을
+    5: "#eb6834",    # 최소 처리   | 깊이 오름차순으로 고정 배정한 것이다.
+    7: "#1baf7a",    #             | 색이 깊이 **값**에 묶이므로 조건이
+    10: "#eda100",   #             | 늘거나 줄어도 남은 색이 바뀌지 않는다.
+    20: "#e87ba4",
+    25: "#008300",
+    30: "#6250d6",
+    50: "#e34948",
+}
 
 
 def _colour(depth):
-    return COLOURS.get(int(depth), None)
+    """설정에 있는 깊이는 반드시 색이 지정돼 있어야 한다.
+
+    None 을 돌려주면 matplotlib 이 기본 순환 색을 쓰고, 그것이 다른 깊이의 색과
+    겹쳐도 그림은 조용히 그려진다. 깊이를 추가했을 때 가장 먼저 깨지는 곳이다.
+    """
+    d = int(depth)
+    if d not in COLOURS:
+        raise KeyError(
+            f"depth {d} 에 지정된 색이 없다. scripts/plot_results.py 의 COLOURS 에 "
+            f"추가하고 dataviz 검증기로 팔레트를 다시 확인할 것 "
+            f"(현재 지정: {sorted(COLOURS)})"
+        )
+    return COLOURS[d]
 
 
 def plot_learning_curves(report, path, metric):
