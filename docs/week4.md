@@ -1,8 +1,34 @@
-# Week 4 — The 16 main runs
+# Week 4 — The 24 main runs
 
 **Plan subtask:** 1.3
-**Outcome:** 16 learning curves (4 depths × 4 seeds), every one bought with the
+**Outcome:** 24 learning curves (6 depths × 4 seeds), every one bought with the
 same communication budget.
+
+## The depth ladder, and why it has six rungs
+
+The first sixteen runs used four depths, `{0, 3, 10, 50}`, and are reported in
+`docs/week4_report_*.md`. `d = 5` and `d = 30` were added afterwards on the
+supervisor's suggestion; the sixteen runs already completed are unaffected and
+are not re-run, because the matrix grew along the depth axis only and
+`run_main_runs.py` skips anything already complete.
+
+| `d` | Role |
+|---|---|
+| 0 | Baseline — no reranking |
+| 3 | Ordering control — rescores the three passages dense retrieval already chose, so promotion is zero by construction |
+| **5** | **Minimal treatment — the shallowest depth that can promote at all.** Paired with `d = 3` it isolates what changes when one or two passages are swapped and nothing else |
+| 10 | Middle |
+| **30** | **Fills the gap between 10 and 50**, so the shape of any diminishing return is observed rather than assumed |
+| 50 | Full candidate pool rescored |
+
+The two new depths need no new retrieval: the cache holds cross-encoder scores
+for all fifty candidates, so `d = 5` and `d = 30` are re-orderings of data that
+already exists. Nothing in Week 2 is recomputed and the per-round training cost
+is unchanged.
+
+Four seeds stay four: seeds alternate between the two topic partitions, so an
+even count keeps the allocation balanced, and six depths × four seeds is 12
+runs on each partition.
 
 The matrix was 4 x 5 = 20 while Week 1-3 were written. It is 4 x 4 here for two
 reasons. Seeds alternate between the two topic partitions, so only an even seed

@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Week 1 gate (ii): depth monotonicity - 처리 축이 실제로 존재하는지.
 
-d in {0, 3, 10, 50} 에서 gold recall@3 이 단조 증가해야 한다. 증가하지 않으면
+treatment.depths (현재 {0, 3, 5, 10, 30, 50}) 에서 gold recall@3 이 단조 증가해야
+한다. 증가하지 않으면
 "depth 를 늘리면 검색 품질이 오른다"는 전제가 성립하지 않는 것이고, 그러면
 본실험의 처리 축 자체가 없는 셈이므로 depth 집합을 다시 잡아야 한다.
 
