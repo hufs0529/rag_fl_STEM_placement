@@ -45,10 +45,23 @@ def main() -> int:
     cfg = config_from_args(args)
 
     specs = enumerate_runs(cfg, args.calibrated)
-    if args.only_depth:
-        specs = [s for s in specs if s.depth in args.only_depth]
-    if args.only_seed:
-        specs = [s for s in specs if s.seed in args.only_seed]
+
+    # 행렬에 없는 값으로 거르면 **조용히 아무것도 고르지 않는다.** 설정에 20 이
+    # 들어 있는데 `--only-depth 25` 를 치면 25 는 그냥 사라지고, 스윕은 나머지
+    # 하나만 돌면서 정상처럼 보인다. 실제로 그렇게 8 run 대신 4 run 이 돌았다.
+    for flag, chosen, field in (("--only-depth", args.only_depth, "depth"),
+                                ("--only-seed", args.only_seed, "seed")):
+        if not chosen:
+            continue
+        available = sorted({getattr(s, field) for s in specs})
+        unknown = sorted(set(chosen) - set(available))
+        if unknown:
+            raise SystemExit(
+                f"{flag} {unknown} 는 행렬에 없다. 쓸 수 있는 값: {available}\n"
+                f"configs/experiment_config.yaml 의 treatment.{field}s 를 고치거나 "
+                f"{flag} 값을 바로잡을 것."
+            )
+        specs = [s for s in specs if getattr(s, field) in chosen]
 
     todo = specs if args.overwrite else pending(cfg, specs)
     backend = args.backend or cfg.get_path("federated.backend", "flower")

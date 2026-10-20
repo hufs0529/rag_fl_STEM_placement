@@ -245,3 +245,34 @@ def test_acquire_writes_our_pid_and_refuses_a_live_holder(tmp_path):
     with pytest.raises(SystemExit) as exc:
         acquire_sweep_lock(cfg, is_alive=lambda pid: True)
     assert "4242" in str(exc.value) and "pkill" in str(exc.value)
+
+
+def _run_main_runs(tmp_path, *args):
+    """run_main_runs.py 를 --dry-run 으로 실제 실행하고 (exit code, stderr) 를 준다."""
+    import subprocess, sys
+    root = Path(__file__).resolve().parents[1]
+    proc = subprocess.run(
+        [sys.executable, str(root / "scripts" / "run_main_runs.py"), "--dry-run", *args],
+        cwd=root, capture_output=True, text=True,
+    )
+    return proc.returncode, proc.stdout + proc.stderr
+
+
+def test_only_depth_refuses_a_value_the_matrix_does_not_have():
+    """행렬에 없는 값으로 거르면 조용히 0 개가 선택된다. 설정에 20 이 있는데
+    --only-depth 25 를 치면 25 가 사라지고 스윕은 절반만 돌면서 정상처럼 보인다."""
+    code, out = _run_main_runs(None, "--only-depth", "25")
+    assert code == 1
+    assert "25" in out and "행렬에 없다" in out
+
+
+def test_only_seed_refuses_a_value_the_matrix_does_not_have():
+    code, out = _run_main_runs(None, "--only-seed", "9")
+    assert code == 1
+    assert "9" in out
+
+
+def test_a_value_the_matrix_does_have_is_accepted():
+    cfg = load_config(str(Path(__file__).resolve().parents[1] / "configs/experiment_config.yaml"))
+    code, out = _run_main_runs(None, "--only-depth", str(cfg.treatment.depths[-1]))
+    assert code == 0, out

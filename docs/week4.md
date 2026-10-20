@@ -108,6 +108,14 @@ past 24 GB and kills run after run with no obvious cause in the log. A pid lock
 at `results/logs/week4/sweep.pid` now refuses the second one; a lock left by a
 killed process is ignored. `--dry-run` and `run_status.sh` work regardless.
 
+Redirect the log with `>>`, not `>`. A second launch is refused by the lock, but
+the shell truncates the file before Python starts, so `>` from a relaunch wipes
+the running sweep's log even though the relaunch itself goes nowhere.
+
+`--only-depth` and `--only-seed` refuse a value the matrix does not contain. They
+used to filter silently, so `--only-depth 7 --only-depth 25` against a ladder
+holding 20 ran four runs instead of eight and looked entirely normal.
+
 ```bash
 python scripts/run_main_runs.py --dry-run     # show the matrix and what is pending
 python scripts/run_main_runs.py               # execute, skipping completed runs
