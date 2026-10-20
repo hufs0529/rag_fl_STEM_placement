@@ -5,7 +5,7 @@
 A 6-week STEM research placement project. This repository contains the full
 experimental pipeline, the analysis code and the reporting artefacts.
 
-> **You are on `week4`, week 4 of 6.** Executes the 32 main runs on an identical communication budget, then verifies after the fact that only one axis actually varied.
+> **You are on `week4`, week 4 of 6.** Executes the 36 main runs on an identical communication budget, then verifies after the fact that only one axis actually varied.
 > The [branch map](#4-branch-map-one-branch-per-week) shows what each branch adds;
 > `week6` carries everything.
 
@@ -146,7 +146,7 @@ Cheap, run before any full experiment, each with an explicit failure action.
 Gate (iii) exists because **a treatment that acts by reducing drift cannot be
 observed where drift is absent.**
 
-### Measurement protocol (32 main runs = 8 depths × 4 seeds)
+### Measurement protocol (36 main runs = 9 depths × 4 seeds)
 
 * Identical communication budget per run, no early stopping.
 * **Answer F1** primary (continuous, interpolates stably), **EM** alongside.
@@ -220,7 +220,7 @@ documented. On this branch:
 | Rounds come from a pilot, not a convention | `resolve_schedule()` raises without gate 3's artefact |
 | No early stopping | there is no stopping branch in `src/fl_runner.py` |
 | Evaluation context fixed at `d = 0` | `eval.eval_depth`, asserted equal across depths by the rehearsal |
-| All 32 runs spent an identical budget | `check_runs.py` compares every budget field post hoc |
+| All 36 runs spent an identical budget | `check_runs.py` compares every budget field post hoc |
 
 The remaining commitments are enforced by code that arrives on later branches — see the branch map.
 
@@ -237,7 +237,7 @@ self-contained and builds on the previous one; `week6` contains everything.
 | `week1` | 1.1 / 1.2 | NQ + `psgs_w100` scan, metrics, prompting, **the three pilot gates** — [runbook](docs/week1.md) | included |
 | `week2` | 1.1 / 1.2 | 200k corpus with hard negatives, topic partition, Qdrant, **retrieval cache** — [runbook](docs/week2.md) | included |
 | `week3` | 1.2 | Flower + PEFT federated pipeline, loss masking, cost/recall/drift logging — [runbook](docs/week3.md) | included |
-| **`week4`** | 1.3 | The 32 main runs at a fixed communication budget — [runbook](docs/week4.md) | **you are here** |
+| **`week4`** | 1.3 | The 36 main runs at a fixed communication budget — [runbook](docs/week4.md) | **you are here** |
 | `week5` | 1.4 | τ-sweep interpolation, two-term cost model, break-even surface, diagnostics | later |
 | `week6` | 1.4 | Final report, presentation, limitations, release notes | later |
 
@@ -295,7 +295,7 @@ or if the treatment diagnostics do not behave as predicted.
 
 | Artefact | Contents |
 |---|---|
-| `results/logs/runs/*.jsonl` | 32 learning curves (8 depths × 4 seeds) |
+| `results/logs/runs/*.jsonl` | 36 learning curves (9 depths × 4 seeds) |
 | `results/logs/week4/main_runs.json` | sweep report, failures, integrity |
 | `results/logs/week4/run_checks.json` | budget identity + treatment diagnostics |
 | `results/logs/week4/flops.json` | measured FLOPs and reranker throughput |

@@ -1,15 +1,15 @@
-# Week 4 — The 32 main runs
+# Week 4 — The 36 main runs
 
 **Plan subtask:** 1.3
-**Outcome:** 32 learning curves (8 depths × 4 seeds), every one bought with the
+**Outcome:** 36 learning curves (9 depths × 4 seeds), every one bought with the
 same communication budget.
 
-## The depth ladder, and why it has eight rungs
+## The depth ladder, and why it has nine rungs
 
 The first sixteen runs used four depths, `{0, 3, 10, 50}`, and are reported in
-`docs/week4_report_*.md`. Four intermediate depths - `5`, `7`, `20`, `30` - were added afterwards on the
-supervisor's suggestion, who asked for a finer ladder so the trend in depth can
-be read rather than inferred from four points. The sixteen runs already
+`docs/week4_report_*.md`. Five intermediate depths - `5`, `7`, `20`, `25`, `30` - were added afterwards on
+the supervisor's suggestion, who asked for a finer ladder so the trend in depth
+can be read rather than inferred from four points. The sixteen runs already
 completed are unaffected and are not re-run: the matrix grew along the depth
 axis only, and `run_main_runs.py` skips anything already complete.
 
@@ -21,12 +21,21 @@ axis only, and `run_main_runs.py` skips anything already complete.
 | **7** | Between 5 and 10, so the slope of the shallow end rests on three points rather than two |
 | 10 | Middle |
 | **20** | Between 10 and 30 |
+| **25** | Added on request |
 | **30** | Where a diminishing return would show if there is one |
 | 50 | Full candidate pool rescored |
 
-Successive rungs are 1.4-2.0x apart, so the ladder is even on a log axis - the
-spacing a trend in depth should be read on, since each extra rung costs
-cross-encoder work proportional to `d`.
+Most rungs are 1.4-2.0x apart, which is even on a log axis - the spacing a trend
+in depth should be read on, since the cross-encoder work each rung costs is
+proportional to `d`. The exception is 20/25/30, which sit 1.20-1.25x apart. Three
+points inside a 1.5x window will differ by far less than the seed-to-seed spread
+already measured, so expect them to read as one point rather than three; the
+finer resolution is in depth, and what the current results are short of is
+resolution in the outcome.
+
+Nine depths is the ceiling this figure set supports: one neutral baseline plus
+eight categorical slots. A tenth depth needs small multiples instead of one
+overlaid chart.
 
 The two new depths need no new retrieval: the cache holds cross-encoder scores
 for all fifty candidates, so `d = 5` and `d = 30` are re-orderings of data that
@@ -34,7 +43,7 @@ already exists. Nothing in Week 2 is recomputed and the per-round training cost
 is unchanged.
 
 Four seeds stay four: seeds alternate between the two topic partitions, so an
-even count keeps the allocation balanced, and eight depths × four seeds is 16
+even count keeps the allocation balanced, and nine depths × four seeds is 18
 runs on each partition.
 
 The matrix was 4 x 5 = 20 while Week 1-3 were written. It is 4 x 4 here for two

@@ -258,18 +258,28 @@ def _run_main_runs(tmp_path, *args):
     return proc.returncode, proc.stdout + proc.stderr
 
 
+def _shipped():
+    return load_config(str(Path(__file__).resolve().parents[1] / "configs/experiment_config.yaml"))
+
+
 def test_only_depth_refuses_a_value_the_matrix_does_not_have():
     """행렬에 없는 값으로 거르면 조용히 0 개가 선택된다. 설정에 20 이 있는데
-    --only-depth 25 를 치면 25 가 사라지고 스윕은 절반만 돌면서 정상처럼 보인다."""
-    code, out = _run_main_runs(None, "--only-depth", "25")
+    --only-depth 25 를 치면 25 가 사라지고 스윕은 절반만 돌면서 정상처럼 보인다.
+
+    없는 값은 **설정에서 유도**한다. 숫자를 적어두면 그 깊이를 나중에 사다리에
+    넣는 순간 테스트가 스스로 틀린다 - 실제로 25 를 넣자마자 그렇게 됐다.
+    """
+    absent = max(_shipped().treatment.depths) + 1
+    code, out = _run_main_runs(None, "--only-depth", str(absent))
     assert code == 1
-    assert "25" in out and "행렬에 없다" in out
+    assert str(absent) in out and "행렬에 없다" in out
 
 
 def test_only_seed_refuses_a_value_the_matrix_does_not_have():
-    code, out = _run_main_runs(None, "--only-seed", "9")
+    absent = max(_shipped().treatment.seeds) + 1
+    code, out = _run_main_runs(None, "--only-seed", str(absent))
     assert code == 1
-    assert "9" in out
+    assert str(absent) in out
 
 
 def test_a_value_the_matrix_does_have_is_accepted():
