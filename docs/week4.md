@@ -1,25 +1,32 @@
-# Week 4 — The 24 main runs
+# Week 4 — The 32 main runs
 
 **Plan subtask:** 1.3
-**Outcome:** 24 learning curves (6 depths × 4 seeds), every one bought with the
+**Outcome:** 32 learning curves (8 depths × 4 seeds), every one bought with the
 same communication budget.
 
-## The depth ladder, and why it has six rungs
+## The depth ladder, and why it has eight rungs
 
 The first sixteen runs used four depths, `{0, 3, 10, 50}`, and are reported in
-`docs/week4_report_*.md`. `d = 5` and `d = 30` were added afterwards on the
-supervisor's suggestion; the sixteen runs already completed are unaffected and
-are not re-run, because the matrix grew along the depth axis only and
-`run_main_runs.py` skips anything already complete.
+`docs/week4_report_*.md`. Four intermediate depths - `5`, `7`, `20`, `30` - were added afterwards on the
+supervisor's suggestion, who asked for a finer ladder so the trend in depth can
+be read rather than inferred from four points. The sixteen runs already
+completed are unaffected and are not re-run: the matrix grew along the depth
+axis only, and `run_main_runs.py` skips anything already complete.
 
 | `d` | Role |
 |---|---|
 | 0 | Baseline — no reranking |
 | 3 | Ordering control — rescores the three passages dense retrieval already chose, so promotion is zero by construction |
 | **5** | **Minimal treatment — the shallowest depth that can promote at all.** Paired with `d = 3` it isolates what changes when one or two passages are swapped and nothing else |
+| **7** | Between 5 and 10, so the slope of the shallow end rests on three points rather than two |
 | 10 | Middle |
-| **30** | **Fills the gap between 10 and 50**, so the shape of any diminishing return is observed rather than assumed |
+| **20** | Between 10 and 30 |
+| **30** | Where a diminishing return would show if there is one |
 | 50 | Full candidate pool rescored |
+
+Successive rungs are 1.4-2.0x apart, so the ladder is even on a log axis - the
+spacing a trend in depth should be read on, since each extra rung costs
+cross-encoder work proportional to `d`.
 
 The two new depths need no new retrieval: the cache holds cross-encoder scores
 for all fifty candidates, so `d = 5` and `d = 30` are re-orderings of data that
@@ -27,7 +34,7 @@ already exists. Nothing in Week 2 is recomputed and the per-round training cost
 is unchanged.
 
 Four seeds stay four: seeds alternate between the two topic partitions, so an
-even count keeps the allocation balanced, and six depths × four seeds is 12
+even count keeps the allocation balanced, and eight depths × four seeds is 16
 runs on each partition.
 
 The matrix was 4 x 5 = 20 while Week 1-3 were written. It is 4 x 4 here for two
