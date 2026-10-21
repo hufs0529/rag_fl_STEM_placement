@@ -1,10 +1,10 @@
-# Week 4 — The 36 main runs
+# Week 4 — The 24 main runs
 
 **Plan subtask:** 1.3
-**Outcome:** 36 learning curves (9 depths × 4 seeds), every one bought with the
+**Outcome:** 24 learning curves (6 depths × 4 seeds), every one bought with the
 same communication budget.
 
-## The depth ladder, and why it has nine rungs
+## The depth ladder, and why it has six rungs
 
 The first sixteen runs used four depths, `{0, 3, 10, 50}`, and are reported in
 `docs/week4_report_*.md`. Five intermediate depths - `5`, `7`, `20`, `25`, `30` - were added afterwards on
@@ -20,20 +20,27 @@ axis only, and `run_main_runs.py` skips anything already complete.
 | **5** | **Minimal treatment — the shallowest depth that can promote at all.** Paired with `d = 3` it isolates what changes when one or two passages are swapped and nothing else |
 | **7** | Between 5 and 10, so the slope of the shallow end rests on three points rather than two |
 | 10 | Middle |
-| **20** | Between 10 and 30 |
-| **25** | Added on request |
-| **30** | Where a diminishing return would show if there is one |
+| **25** | Between 10 and 50 |
 | 50 | Full candidate pool rescored |
 
-Most rungs are 1.4-2.0x apart, which is even on a log axis - the spacing a trend
-in depth should be read on, since the cross-encoder work each rung costs is
-proportional to `d`. The exception is 20/25/30, which sit 1.20-1.25x apart. Three
-points inside a 1.5x window will differ by far less than the seed-to-seed spread
-already measured, so expect them to read as one point rather than three; the
-finer resolution is in depth, and what the current results are short of is
-resolution in the outcome.
+The supervisor offered two sets of intermediate depths, "7, 20 and 30" or
+"7 and 25"; the second was taken. 5, 20 and 30 were configured at one point and
+not measured, because of what the control says about what the measurement can
+resolve.
 
-Nine depths is the ceiling this figure set supports: one neutral baseline plus
+`d = 3` cannot change which passages reach the prompt - it reorders the three
+dense retrieval already chose, and its promotion rate is zero by construction -
+so the gap between `d = 3` and `d = 0` is this measurement's noise floor. It is
+**+0.31 F1**. Every treatment effect measured against `d = 0` is the same size
+or smaller: +0.07 at `d = 7`, +0.60 at `d = 10`, +0.11 at `d = 25`, +0.28 at
+`d = 50`. Measured against the control instead of the baseline, three of the
+four are negative. A denser ladder does not change what a ruler whose smallest
+division exceeds the quantity can read, and closing the gap by seeds alone would
+take sixteen of them - sixty-four runs, ninety hours.
+
+Six depths × four seeds is 12 runs on each partition.
+
+The figure set supports one neutral baseline plus
 eight categorical slots. A tenth depth needs small multiples instead of one
 overlaid chart.
 

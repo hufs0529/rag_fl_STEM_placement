@@ -1,7 +1,7 @@
 {
   "integrity": {
-    "runs_expected": 16,
-    "runs_complete": 16,
+    "runs_expected": 24,
+    "runs_complete": 24,
     "identical_budget": true,
     "issues": [],
     "total_bytes": [
@@ -19,8 +19,18 @@
       "runs": 4,
       "missing": 0
     },
+    "7": {
+      "mean_promotion_rate": 0.36192883269336307,
+      "runs": 4,
+      "missing": 0
+    },
     "10": {
       "mean_promotion_rate": 0.42017640780679183,
+      "runs": 4,
+      "missing": 0
+    },
+    "25": {
+      "mean_promotion_rate": 0.4975653035604837,
       "runs": 4,
       "missing": 0
     },
