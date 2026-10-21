@@ -1,6 +1,8 @@
 import pytest
 
-from src.analysis.diagnostics import assess_mechanism, mean_divergence, mechanism_table
+from src.analysis.diagnostics import (
+    assess_mechanism, mean_divergence, mechanism_table, sweep_summary,
+)
 
 
 def _table(divergence_at_50):
@@ -96,3 +98,52 @@ def test_early_rounds_can_be_isolated():
         for r, d in [(1, 0.2), (2, 0.2), (30, 0.01)]
     ]
     assert mean_divergence(records, first_n_rounds=10) == 0.2
+
+
+def _sweep(saved_by_depth_per_tau, stderr=0.5):
+    """tau 격자를 흉내낸다: {depth: [tau 마다의 절약]}."""
+    n = len(next(iter(saved_by_depth_per_tau.values())))
+    return [
+        {"tau": 20.0 + i,
+         "depths": {str(d): {"rounds_saved": vals[i], "rounds_stderr": stderr}
+                    for d, vals in saved_by_depth_per_tau.items()}}
+        for i in range(n)
+    ]
+
+
+def test_the_sweep_summary_counts_targets_rather_than_trusting_one():
+    """tau 한 점은 그 점의 선택이 결론을 정한다. 실측에서 tau=25.02 에서는 d=25 가
+    유일한 양수(+0.10)였지만 63 점 전체 중앙값은 -0.113 이었다."""
+    out = sweep_summary(_sweep({25: [2.0, -1.0, -1.0, -1.0]}))
+    s = out[25]
+    assert s["n_tau"] == 4
+    assert s["tau_with_saving"] == 1
+    assert s["tau_with_resolved_saving"] == 1
+    assert s["median_rounds_saved"] == -1.0
+    assert (s["min_rounds_saved"], s["max_rounds_saved"]) == (-1.0, 2.0)
+
+
+def test_a_saving_at_a_minority_of_targets_is_within_noise():
+    sweep = _sweep({0: [0.0] * 5, 50: [3.0, 3.0, -1.0, -1.0, -1.0]})
+    summary = sweep_summary(sweep)
+    table = mechanism_table(
+        recall_by_depth={0: 0.40, 50: 0.53},
+        divergence_by_depth={0: 0.090, 50: 0.061},
+        rounds_saved_by_depth={0: 0.0, 50: summary[50]["median_rounds_saved"]},
+        sweep_by_depth=summary,
+    )
+    out = assess_mechanism(table)
+    assert out["verdict"] == "within_noise"
+    assert "2 of 5" in out["note"]
+
+
+def test_a_saving_at_a_majority_of_targets_counts():
+    sweep = _sweep({0: [0.0] * 5, 50: [3.0, 3.0, 3.0, 3.0, -1.0]})
+    summary = sweep_summary(sweep)
+    table = mechanism_table(
+        recall_by_depth={0: 0.40, 50: 0.53},
+        divergence_by_depth={0: 0.090, 50: 0.061},
+        rounds_saved_by_depth={0: 0.0, 50: summary[50]["median_rounds_saved"]},
+        sweep_by_depth=summary,
+    )
+    assert assess_mechanism(table)["verdict"] == "consistent"

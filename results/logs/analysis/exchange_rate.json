@@ -6639,7 +6639,15 @@
         "divergence": 1.3233803600185,
         "divergence_reduction": 0.0,
         "rounds_saved": 0.0,
-        "rounds_saved_stderr": 0.17493717458100558
+        "rounds_saved_stderr": 0.17493717458100558,
+        "n_tau": 63,
+        "tau_with_saving": 0,
+        "tau_with_resolved_saving": 0,
+        "fraction_with_saving": 0.0,
+        "fraction_resolved": 0.0,
+        "median_rounds_saved": 0.0,
+        "min_rounds_saved": 0.0,
+        "max_rounds_saved": 0.0
       },
       {
         "depth": 3,
@@ -6647,8 +6655,16 @@
         "recall_gain": 0.45045608894125655,
         "divergence": 1.3218321990924704,
         "divergence_reduction": 0.001548160926029496,
-        "rounds_saved": -0.6052200487896666,
-        "rounds_saved_stderr": 0.2826081691410289
+        "rounds_saved": 0.1494385145069579,
+        "rounds_saved_stderr": 0.2826081691410289,
+        "n_tau": 63,
+        "tau_with_saving": 41,
+        "tau_with_resolved_saving": 26,
+        "fraction_with_saving": 0.6507936507936508,
+        "fraction_resolved": 0.4126984126984127,
+        "median_rounds_saved": 0.1494385145069579,
+        "min_rounds_saved": -0.8800522541884348,
+        "max_rounds_saved": 11.352886310582367
       },
       {
         "depth": 7,
@@ -6656,8 +6672,16 @@
         "recall_gain": 0.6483559965888404,
         "divergence": 1.3142856608455382,
         "divergence_reduction": 0.009094699172961684,
-        "rounds_saved": -2.0535875587719428,
-        "rounds_saved_stderr": 0.8325702078124243
+        "rounds_saved": -0.5601779979652672,
+        "rounds_saved_stderr": 0.8325702078124243,
+        "n_tau": 63,
+        "tau_with_saving": 19,
+        "tau_with_resolved_saving": 10,
+        "fraction_with_saving": 0.30158730158730157,
+        "fraction_resolved": 0.15873015873015872,
+        "median_rounds_saved": -0.5601779979652672,
+        "min_rounds_saved": -5.464493823601508,
+        "max_rounds_saved": 4.837285437239792
       },
       {
         "depth": 10,
@@ -6665,8 +6689,16 @@
         "recall_gain": 0.676437300558888,
         "divergence": 1.3151165495826282,
         "divergence_reduction": 0.008263810435871655,
-        "rounds_saved": -1.0312631258296356,
-        "rounds_saved_stderr": 0.7078002006812513
+        "rounds_saved": -0.21256986491110297,
+        "rounds_saved_stderr": 0.7078002006812513,
+        "n_tau": 63,
+        "tau_with_saving": 20,
+        "tau_with_resolved_saving": 16,
+        "fraction_with_saving": 0.31746031746031744,
+        "fraction_resolved": 0.25396825396825395,
+        "median_rounds_saved": -0.21256986491110297,
+        "min_rounds_saved": -2.468453325870655,
+        "max_rounds_saved": 8.15928478301159
       },
       {
         "depth": 25,
@@ -6674,8 +6706,16 @@
         "recall_gain": 0.7120075228815117,
         "divergence": 1.3162375134761395,
         "divergence_reduction": 0.007142846542360415,
-        "rounds_saved": 0.09877820763978029,
-        "rounds_saved_stderr": 0.5149007483593805
+        "rounds_saved": -0.11271344187947996,
+        "rounds_saved_stderr": 0.5149007483593805,
+        "n_tau": 63,
+        "tau_with_saving": 24,
+        "tau_with_resolved_saving": 9,
+        "fraction_with_saving": 0.38095238095238093,
+        "fraction_resolved": 0.14285714285714285,
+        "median_rounds_saved": -0.11271344187947996,
+        "min_rounds_saved": -1.8560785864971514,
+        "max_rounds_saved": 3.1377361025633306
       },
       {
         "depth": 50,
@@ -6683,15 +6723,85 @@
         "recall_gain": 0.7244400983224473,
         "divergence": 1.3132400597575382,
         "divergence_reduction": 0.010140300260961688,
-        "rounds_saved": -0.14645587699095763,
-        "rounds_saved_stderr": 0.8580369086779268
+        "rounds_saved": -0.37373776445618034,
+        "rounds_saved_stderr": 0.8580369086779268,
+        "n_tau": 63,
+        "tau_with_saving": 15,
+        "tau_with_resolved_saving": 7,
+        "fraction_with_saving": 0.23809523809523808,
+        "fraction_resolved": 0.1111111111111111,
+        "median_rounds_saved": -0.37373776445618034,
+        "min_rounds_saved": -5.746722019800558,
+        "max_rounds_saved": 3.907767765821184
       }
     ],
     "verdict": "within_noise",
-    "note": "the largest rounds-to-target saving, 0.099 rounds at d=25, is inside its own uncertainty (s.e. 0.515); no saving is resolved by this measurement",
+    "note": "the largest median saving, 0.149 rounds at d=3, clears its own standard error at only 26 of 63 targets; no depth resolves a saving at a majority of targets",
     "depths_with_resolved_saving": [],
     "corr_recall_vs_divergence_reduction": 0.9135148055484722,
-    "corr_recall_vs_rounds_saved": 0.16779110180974013,
-    "corr_divergence_reduction_vs_rounds_saved": -0.16287056313229772
+    "corr_recall_vs_rounds_saved": -0.6518059465890655,
+    "corr_divergence_reduction_vs_rounds_saved": -0.8819542670870786
+  },
+  "sweep_summary": {
+    "0": {
+      "n_tau": 63,
+      "tau_with_saving": 0,
+      "tau_with_resolved_saving": 0,
+      "fraction_with_saving": 0.0,
+      "fraction_resolved": 0.0,
+      "median_rounds_saved": 0.0,
+      "min_rounds_saved": 0.0,
+      "max_rounds_saved": 0.0
+    },
+    "3": {
+      "n_tau": 63,
+      "tau_with_saving": 41,
+      "tau_with_resolved_saving": 26,
+      "fraction_with_saving": 0.6507936507936508,
+      "fraction_resolved": 0.4126984126984127,
+      "median_rounds_saved": 0.1494385145069579,
+      "min_rounds_saved": -0.8800522541884348,
+      "max_rounds_saved": 11.352886310582367
+    },
+    "7": {
+      "n_tau": 63,
+      "tau_with_saving": 19,
+      "tau_with_resolved_saving": 10,
+      "fraction_with_saving": 0.30158730158730157,
+      "fraction_resolved": 0.15873015873015872,
+      "median_rounds_saved": -0.5601779979652672,
+      "min_rounds_saved": -5.464493823601508,
+      "max_rounds_saved": 4.837285437239792
+    },
+    "10": {
+      "n_tau": 63,
+      "tau_with_saving": 20,
+      "tau_with_resolved_saving": 16,
+      "fraction_with_saving": 0.31746031746031744,
+      "fraction_resolved": 0.25396825396825395,
+      "median_rounds_saved": -0.21256986491110297,
+      "min_rounds_saved": -2.468453325870655,
+      "max_rounds_saved": 8.15928478301159
+    },
+    "25": {
+      "n_tau": 63,
+      "tau_with_saving": 24,
+      "tau_with_resolved_saving": 9,
+      "fraction_with_saving": 0.38095238095238093,
+      "fraction_resolved": 0.14285714285714285,
+      "median_rounds_saved": -0.11271344187947996,
+      "min_rounds_saved": -1.8560785864971514,
+      "max_rounds_saved": 3.1377361025633306
+    },
+    "50": {
+      "n_tau": 63,
+      "tau_with_saving": 15,
+      "tau_with_resolved_saving": 7,
+      "fraction_with_saving": 0.23809523809523808,
+      "fraction_resolved": 0.1111111111111111,
+      "median_rounds_saved": -0.37373776445618034,
+      "min_rounds_saved": -5.746722019800558,
+      "max_rounds_saved": 3.907767765821184
+    }
   }
 }

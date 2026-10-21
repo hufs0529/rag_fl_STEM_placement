@@ -143,7 +143,24 @@ and returns one of:
 |---|---|
 | `consistent` | recall gains coincide with reduced divergence — the proposed path |
 | `other_mechanism` | rounds were saved **without** less drift — the gain is real but arrives another way |
-| `no_effect` | no saving to explain |
+| `within_noise` | some targets show a saving, but no depth resolves one at a majority of them |
+| `no_effect` | no saving at any target |
+
+**The verdict reads the whole τ sweep, never one τ.** A saving counts as observed
+only when it exceeds its own standard error at **more than half** the targets, and
+the figure quoted is the **median** across the sweep. Both choices exist because a
+single τ decides the answer by itself: at τ = 25.02 only `d` = 25 showed a
+positive saving, +0.0988 rounds against a standard error of 0.515, and that one
+number flipped the verdict from "no effect" to "consistent with the proposed
+path". Across all 63 targets the same depth has a median of −0.113 and is positive
+at 24 of them — the single point flattered it.
+
+The sweep is **not trimmed**, even though the top of the τ range is where
+interpolation is least stable: the baseline needs 9.0 rounds at τ = 25.02 but
+38.7 at τ = 28.14, so near the ceiling a tenth of an F1 point becomes ten rounds
+and savings swing to ±11. Cutting that tail would replace one arbitrary choice
+with another. Everything is kept and read with statistics that magnitude cannot
+dominate — a median and a count of targets.
 
 Correlations across depths are reported alongside. This is the check that stops
 a positive result from being over-claimed: a saving is not by itself evidence for

@@ -30,7 +30,9 @@ from src.analysis.curves import (
     attainable_range, curve_mean, final_scores, local_slope, matched_budget_table,
     rounds_by_depth, tau_grid,
 )
-from src.analysis.diagnostics import assess_mechanism, mean_divergence, mechanism_table
+from src.analysis.diagnostics import (
+    assess_mechanism, mean_divergence, mechanism_table, sweep_summary,
+)
 from src.config import add_config_args, config_from_args
 from src.logging_utils import banner, load_json, read_jsonl, save_json
 from src.run_matrix import enumerate_runs, group_by_depth, is_complete, load_curve
@@ -171,8 +173,14 @@ def main() -> int:
     rounds_saved_stderr = {
         depth: midpoint["depths"][str(depth)].get("rounds_stderr") for depth in curves_by_depth
     }
+    # tau 전구간 요약. 기전 판정은 한 점이 아니라 이 요약을 본다.
+    sweep_by_depth = sweep_summary(sweep, baseline_depth)
+    rounds_saved_median = {
+        depth: (sweep_by_depth.get(depth) or {}).get("median_rounds_saved")
+        for depth in curves_by_depth
+    }
     table = mechanism_table(recall_by_depth, divergence_by_depth,
-                            rounds_saved, rounds_saved_stderr)
+                            rounds_saved_median, rounds_saved_stderr, sweep_by_depth)
     mechanism = assess_mechanism(table)
 
     report = {
@@ -235,6 +243,7 @@ def main() -> int:
         "exchange_rates": rates,
         "break_even_surfaces": surfaces,
         "mechanism": {**table, **mechanism},
+        "sweep_summary": {str(d): v for d, v in sweep_by_depth.items()},
     }
     save_json(report, log_dir / "analysis" / "exchange_rate.json")
 
