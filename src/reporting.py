@@ -143,6 +143,9 @@ def headline(report: Dict) -> str:
         "other_mechanism": "Rounds were saved without a reduction in client-update divergence, "
                            "so the gain arrives by a different mechanism than the one proposed.",
         "no_effect": "No rounds-to-target saving was observed, so there is no mechanism to explain.",
+        "within_noise": "The largest rounds-to-target saving is inside its own uncertainty, so "
+                        "this measurement resolves no saving and there is no mechanism to "
+                        "explain.",
     }[verdict]
 
     return direction + " " + mechanism
