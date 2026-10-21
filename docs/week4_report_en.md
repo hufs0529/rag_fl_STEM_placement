@@ -1,4 +1,4 @@
-# Week 4 — Executing the Sixteen Main Runs
+# Week 4 — Executing the Twenty-Four Main Runs
 
 **Project:** Buying Back Communication with Retrieval Compute — The Exchange Rate of
 Client-Side Reranking in Federated LLM Fine-Tuning
@@ -15,54 +15,51 @@ differences between depths.
 
 ## 1. What Week 4 produced
 
-Sixteen complete federated trainings — four reranking depths at four seeds —
+Twenty-four complete federated trainings — six reranking depths at four seeds —
 each spending an identical communication budget with no early stopping.
 
 | | |
 |---|---|
-| Runs | **16 / 16 complete**, 0 failures |
-| Wall clock | **22.6 hours** on one NVIDIA A10G, 84.8 min per run |
+| Runs | **24 / 24 complete**, no failures |
+| Wall clock | **33.9 h** on one NVIDIA A10G, 84.7 min per run |
 | Rounds per run | 59 |
 | Clients per round | 8 |
 | Local steps per round | 32 |
 | Communication per run | **1,739,980,800 bytes (1.7400 GB)** |
-| Communication in total | 27.8 GB |
+| Communication in total | 41.8 GB |
 | Evaluation points per curve | 21 (round 0 plus 20 scheduled) |
 
-One run is 59 × 8 = 472 client training episodes, so the sweep is 7,552 of them.
+One run is 59 × 8 = 472 client trainings, so the sweep is 11,328 of them.
 
-### Why sixteen and not twenty
+### Why the ladder has six rungs
 
-The matrix was 4 × 5 = 20 while Weeks 1–3 were written. It was reduced to cut the
-sweep's wall clock, and sixteen is the number because it is the only balanced
-matrix below twenty.
+While Weeks 1-3 were written the ladder was four rungs, `{0, 3, 10, 50}`. The
+supervisor asked for intermediate depths so the trend in depth could be read
+rather than inferred, offering "7, 20 and 30 (or 7 and 25)"; the second set was
+taken, giving `{0, 3, 7, 10, 25, 50}`. Successive rungs are 2.33, 1.43, 2.5 and
+2.0 times apart, which is even on a log axis — the axis a depth trend must be
+read on, because the cross-encoder work a rung costs is proportional to `d`.
 
-Seeds are assigned to the two topic partitions alternately, so only an even seed
-count uses both equally. Five seeds give partition 1001 three runs per depth and
-1002 two; three seeds give 2:1; four give 2:2. Fifteen is not a matrix at all —
-four does not divide fifteen, and stopping a seed-major sweep there omits
-`d50_s4`, the strongest treatment cell.
+`5`, `20` and `30` were configured at one point and not measured. The control
+says why. `d` = 3 cannot change which passages reach the prompt, yet it scores
+**0.31 F1** above `d` = 0, and every treatment effect measured is that size or
+smaller. A finer ladder does not let a ruler read a quantity below its smallest
+division. Closing that gap with seeds instead would take sixteen of them: 64
+runs, 90 hours.
 
-So the reduction also corrects an imbalance the original plan carried: at five
-seeds the depth effect would have been measured under one partition more often
-than the other.
+Four seeds were kept. Seeds alternate between the two topic partitions, so only
+an even count uses both equally — six depths at four seeds is 12 runs on each.
 
-| Matrix | Runs | Partition split per depth | Measured cost at 84.8 min/run |
+| Seeds | Partition split per depth | Runs at 6 depths | At 84.7 min per run |
 |---|---|---|---|
-| 4 × 3 | 12 | 2 : 1 — unbalanced | 17.0 h |
-| **4 × 4** | **16** | **2 : 2 — balanced** | **22.6 h** |
-| 4 × 5 | 20 | 3 : 2 — unbalanced | 28.3 h |
-| 4 × 6 | 24 | 3 : 3 — balanced | 33.9 h |
+| 3 | 2 : 1 — unbalanced | 18 | 25.4 h |
+| **4** | **2 : 2 — balanced** | **24** | **33.9 h** |
+| 5 | 3 : 2 — unbalanced | 30 | 42.4 h |
+| 6 | 3 : 3 — balanced | 36 | 50.8 h |
 
-The cost of four seeds rather than five is a standard error about 12 % wider
-(√5⁄√4); the saving is 5.7 hours of GPU time. Should four prove too few, the
-matrix extends to 4 × 6 = 24 — the next balanced point — without repeating
-anything: seed is the outer loop and completed runs are skipped, so only the
-eight new runs execute.
-
-The primary artefacts are the sixteen learning curves, `results/logs/runs/*.jsonl`,
-580 KB, now under version control. They are the only input the Subtask 1.4
-analysis reads.
+The primary artefact is twenty-four learning curves in
+`results/logs/runs/*.jsonl`, 868 KB, under version control. They are the **only**
+input the Subtask 1.4 analysis reads.
 
 ---
 
@@ -86,10 +83,10 @@ appending, so a failed attempt cannot leave a curve that walks backwards.
 ## 3. Verification that only one axis varied
 
 `scripts/check_runs.py`, run after the sweep, compares every budget field across
-the sixteen runs and checks the treatment diagnostics. The recorded result:
+all twenty-four runs and checks the treatment diagnostics. The recorded result:
 
 ```json
-"runs_expected": 16,  "runs_complete": 16,
+"runs_expected": 24,  "runs_complete": 24,
 "identical_budget": true,  "issues": [],
 "total_bytes": [1739980800],
 "problems": []
@@ -101,51 +98,96 @@ way, as is the evaluation schedule. A field recorded for some
 runs but not others is itself reported as an issue, so a run predating a field
 cannot pass unnoticed.
 
-### 3.1 The treatment took effect, and the controls held
+### 3.1 The treatment took effect, the controls held — and what those rates imply
 
 `promotion_rate` is the fraction of the three prompt passages that dense
-retrieval would not have selected.
-
-| Depth | `promotion_rate` | Required | |
-|---|---|---|---|
-| 0 | **0.0000** | exactly 0 | ✅ |
-| 3 | **0.0000** | exactly 0 | ✅ |
-| 10 | 0.4202 | non-zero | ✅ |
-| 50 | **0.5252** | non-zero, and the largest | ✅ |
-
-Three conditions are checked and all pass: the controls promoted nothing, the
-treatments promoted something, and the rate is monotone in depth.
-
-`rank_change_rate` — the fraction of prompt slots whose passage differs from the
-dense top-3 at that position — separates the two controls:
+retrieval would not have selected; `rank_change_rate` is the fraction of slots
+holding a different passage from the dense top three. The first measures how much
+the **content** changed, the second how much the **arrangement** did.
 
 | Depth | `rank_change_rate` | `promotion_rate` | Reading |
 |---|---|---|---|
-| 0 | 0.000 | 0.000 | nothing happens |
-| **3** | **0.449** | **0.000** | **same three passages, different order** |
-| 10 | 0.677 | 0.420 | new passages promoted |
-| 50 | 0.725 | 0.525 | most promoted |
+| 0 | 0.000 | **0.0000** | nothing happens |
+| **3** | **0.449** | **0.0000** | **same three passages, different order** |
+| 7 | 0.648 | 0.3619 | new passages promoted |
+| 10 | 0.677 | 0.4202 | |
+| 25 | 0.714 | 0.4976 | |
+| 50 | 0.725 | **0.5252** | most promotion |
 
-`d = 3` reorders 45 % of the prompt slots while promoting nothing. That is the
-arm which separates an ordering effect from a retrieval-quality effect, and the
-measurement confirms it behaved as designed.
+All three conditions pass: the controls (`d` = 0, 3) promoted nothing, the
+treatments did, and the rate is monotone in depth. That is the verification.
+What follows is what the numbers say.
 
-### 3.2 Evaluation context was identical across conditions
+**(i) `promotion_rate` is the dose of the treatment, and it saturates in depth.**
+The rate rises monotonically but the increments collapse. Per unit of depth:
 
-Evaluation is held at `d = 0` for every condition, so that what is measured is
-what the model learned rather than what a better test-time context supplies. The
-logs confirm it: gold recall at the three evaluation prompt slots, at the final
-round, is
+| Depth | `promotion_rate` | Promotion per unit depth |
+|---|---|---|
+| 7 | 0.3619 | **0.0517** |
+| 10 | 0.4202 | 0.0420 |
+| 25 | 0.4976 | 0.0199 |
+| 50 | 0.5252 | **0.0105** |
+
+Efficiency falls **4.9-fold** from `d` = 7 to `d` = 50. Raising depth five times
+over, from 10 to 50, buys only **25 %** more promotion, 0.420 to 0.525. The
+passages the cross-encoder will promote sit near the **front of the candidate
+pool**, and rescoring the tail is largely wasted. The diminishing return appears
+**here**, not in performance.
+
+**(ii) The gap between the two rates separates reshuffling from replacement.** At
+`d` = 7, 64.8 % of slots change but only 36.2 % hold a new passage; the
+difference of 28.6 points is **the original three in a different order**. The gap
+narrows with depth (72.5 % against 52.5 % at `d` = 50, 20.0 points). Shallow
+treatment is substantially reordering, and only at depth does replacement
+dominate. That is why `d` = 3 exists as a control: the reordering component has
+to be measurable on its own.
+
+**(iii) `d` = 3 is a control and also this measurement's ruler.** It rescores the
+three passages dense retrieval already chose, so it **cannot promote a fourth**
+and its promotion rate is zero by construction. The prompt content is identical
+to `d` = 0. Any difference in outcome between them is therefore variation
+**unrelated to retrieval quality**. Measured, it is **+0.31 F1** (± 0.37). That
+figure sets the scale on which every depth comparison in Section 4 must be read:
+a treatment effect near 0.31 is the size of the effect of changing nothing.
+
+### 3.2 Evaluation context was identical across conditions — and why it must be
+
+Evaluation is held at `d` = 0 for every condition. Gold recall across the three
+evaluation-prompt slots at the final round:
 
 | Depth | Seeds 1–4 |
 |---|---|
 | 0 | 0.497, 0.494, 0.497, 0.494 |
 | 3 | 0.497, 0.494, 0.497, 0.494 |
+| 7 | 0.497, 0.494, 0.497, 0.494 |
 | 10 | 0.497, 0.494, 0.497, 0.494 |
+| 25 | 0.497, 0.494, 0.497, 0.494 |
 | 50 | 0.497, 0.494, 0.497, 0.494 |
 
-Identical across depths, varying only with the partition seed. Every condition
-was scored on the same context.
+Identical to three decimals regardless of depth, varying only with the partition
+seed. **Every condition was scored on the same context.**
+
+**Why it has to be fixed.** Reranking can raise a score by two routes, and they
+are not the same thing.
+
+| Route | How it works | Relation to communication |
+|---|---|---|
+| **Training route** | better passages → better gradients → better weights | **Direct.** Better weights reach a target in fewer rounds, and rounds are bytes |
+| **Serving route** | better passages at inference → better answers from the same weights | **None.** It requires running the reranker on every query forever and is independent of round count |
+
+Evaluating each run at its own depth would **sum the two routes inseparably**. A
+`d` = 50 run scoring higher could be scoring higher because its weights improved
+or because it was handed better documents at test time, and nothing in the number
+would say which. The serving route almost certainly does raise the score — Week 2
+measured gold recall 3.92 points higher at `d` = 50 than at `d` = 0 — so folding
+it in would manufacture the conclusion that reranking reduces communication while
+nothing had in fact been reduced.
+
+**What fixing it costs.** The F1 reported here is lower than a system actually
+deployed at `d` = 50 would score. That is deliberate. The question is not what the
+best serving configuration scores, but what the same communication budget buys in
+each condition. The serving gain is accounted separately in the Subtask 1.4 cost
+model, as FLOPs spent — priced rather than free.
 
 ---
 
@@ -183,44 +225,115 @@ only through incidental token overlap — if EM moves with it, the model is gett
 answers right rather than merely close. EM cannot exceed F1: an exact match
 scores 1 on both.
 
-### The sixteen recorded results
+### The twenty-four recorded results
 
-Answer F1 and exact match on the fixed 1,000-question held-out set after the full
-budget was spent. These are the logged values, reported as data; the comparison
-between depths belongs to Subtask 1.4.
+Answer F1 and EM on the fixed 1,000-question held-out set after the budget was
+fully spent.
 
-| Run | Partition | F1 | EM | Minutes |
+| run | partition | F1 | EM | min | | run | partition | F1 | EM | min |
+|---|---|---|---|---|---|---|---|---|---|---|
+| d0_s1 | 1001 | 27.89 | 21.10 | 84.2 | | d10_s1 | 1001 | 28.64 | 21.80 | 84.7 |
+| d0_s2 | 1002 | 29.92 | 23.20 | 85.0 | | d10_s2 | 1002 | 30.90 | 23.70 | 84.8 |
+| d0_s3 | 1001 | 28.04 | 21.40 | 84.9 | | d10_s3 | 1001 | 28.94 | 22.00 | 84.7 |
+| d0_s4 | 1002 | 30.66 | 23.60 | 84.9 | | d10_s4 | 1002 | 30.41 | 23.30 | 84.8 |
+| d3_s1 | 1001 | 28.29 | 21.60 | 84.9 | | d25_s1 | 1001 | 28.42 | 21.40 | 83.8 |
+| d3_s2 | 1002 | 31.21 | 24.00 | 85.0 | | d25_s2 | 1002 | 30.24 | 23.10 | 84.6 |
+| d3_s3 | 1001 | 28.05 | 21.20 | 84.8 | | d25_s3 | 1001 | 28.88 | 22.10 | 84.4 |
+| d3_s4 | 1002 | 30.21 | 22.90 | 85.1 | | d25_s4 | 1002 | 29.41 | 22.40 | 84.7 |
+| d7_s1 | 1001 | 28.10 | 21.40 | 84.3 | | d50_s1 | 1001 | 28.15 | 21.30 | 84.5 |
+| d7_s2 | 1002 | 30.35 | 23.00 | 84.8 | | d50_s2 | 1002 | 30.10 | 22.70 | 84.6 |
+| d7_s3 | 1001 | 27.70 | 20.80 | 84.6 | | d50_s3 | 1001 | 29.14 | 22.30 | 84.6 |
+| d7_s4 | 1002 | 30.66 | 23.40 | 84.8 | | d50_s4 | 1002 | 30.24 | 23.50 | 84.6 |
+
+**Wall clock is independent of depth** (83.8–85.1 min, a spread of 1.3 min).
+Rerank scores were computed once in Week 2 and frozen in a cache, so during
+training `d` only **reorders** what is already there. The minutes in this table
+therefore carry no reranking cost. That cost is accounted separately as FLOPs in
+Section 6 — mixing the two would hide what depth charges.
+
+### 4.1 Depth against compute, performance and communication
+
+The four axes side by side. Cost comes from the measured FLOPs of Section 6
+(5.437 × 10⁹ per pair, 20.34 pairs/s on CPU), performance from the table above,
+communication from the fixed budget and the rounds-to-target.
+
+| `d` | FLOPs per query | Seconds per query | `promotion` | F1 (mean ± s.e.) | **vs `d` = 0** | **vs `d` = 3 (control)** |
+|---|---|---|---|---|---|---|
+| **0** | 0 | 0.000 | 0.0000 | 29.13 ± 0.69 | — | −0.31 ± 0.37 |
+| **3** | 1.63 × 10¹⁰ | 0.147 | 0.0000 | 29.44 ± 0.76 | **+0.31 ± 0.37** | — |
+| **7** | 3.81 × 10¹⁰ | 0.344 | 0.3619 | 29.20 ± 0.76 | +0.07 ± 0.16 | **−0.24 ± 0.27** |
+| **10** | 5.44 × 10¹⁰ | 0.492 | 0.4202 | 29.72 ± 0.55 | +0.60 ± 0.28 | +0.29 ± 0.25 |
+| **25** | 1.36 × 10¹¹ | 1.229 | 0.4976 | 29.24 ± 0.39 | +0.11 ± 0.47 | **−0.20 ± 0.42** |
+| **50** | 2.72 × 10¹¹ | 2.458 | 0.5252 | 29.41 ± 0.48 | +0.28 ± 0.31 | **−0.03 ± 0.45** |
+
+Comparisons are **paired within seed**, because seed-to-seed variation exceeds
+the differences between depths: the baseline alone spans 27.89 to 30.66, 2.77 F1,
+while no depth differs from another by a whole point. Pairing cancels that span.
+
+On the communication side every condition spent an identical **1.7400 GB** by
+design, so a saving can only arise as *reaching the same target in fewer rounds*.
+At the representative target τ = 25.02 F1:
+
+| `d` | Rounds to target | s.e. | Rounds saved | Communication saved |
 |---|---|---|---|---|
-| d0_s1 | 1001 | 27.89 | 21.10 | 84.2 |
-| d0_s2 | 1002 | 29.92 | 23.20 | 85.0 |
-| d0_s3 | 1001 | 28.04 | 21.40 | 84.9 |
-| d0_s4 | 1002 | 30.66 | 23.60 | 84.9 |
-| d3_s1 | 1001 | 28.29 | 21.60 | 84.9 |
-| d3_s2 | 1002 | 31.21 | 24.00 | 85.0 |
-| d3_s3 | 1001 | 28.05 | 21.20 | 84.8 |
-| d3_s4 | 1002 | 30.21 | 22.90 | 85.1 |
-| d10_s1 | 1001 | 28.64 | 21.80 | 84.7 |
-| d10_s2 | 1002 | 30.90 | 23.70 | 84.8 |
-| d10_s3 | 1001 | 28.94 | 22.00 | 84.7 |
-| d10_s4 | 1002 | 30.41 | 23.30 | 84.8 |
-| d50_s1 | 1001 | 28.15 | 21.30 | 84.5 |
-| d50_s2 | 1002 | 30.10 | 22.70 | 84.6 |
-| d50_s3 | 1001 | 29.14 | 22.30 | 84.6 |
-| d50_s4 | 1002 | 30.24 | 23.50 | 84.6 |
+| 0 | 9.02 | 0.17 | — | — |
+| 3 | 9.63 | 0.28 | −0.61 | −17.8 MB |
+| 7 | 11.08 | 0.83 | −2.05 | −60.6 MB |
+| 10 | 10.05 | 0.71 | −1.03 | −30.4 MB |
+| 25 | 8.92 | 0.51 | **+0.10** | +2.9 MB |
+| 50 | 9.17 | 0.86 | −0.15 | −4.3 MB |
 
-Descriptive summary, mean over the four seeds with its standard error:
+### 4.2 Three questions the table is there to answer
 
-| Depth | F1 | EM |
+**(a) Does increasing depth consistently improve performance — no.**
+
+Against `d` = 0 the gains run +0.07, +0.60, +0.11, +0.28: **not monotone**, and
+every one inside its own standard error. The decisive column is the comparison
+against the **control**. `d` = 3 cannot change prompt content, yet it sits
+**+0.31** above `d` = 0. Read against the control instead of the baseline,
+**three of the four treatments are negative** (−0.24, −0.20, −0.03), and the
++0.60 at `d` = 10 — the largest — shrinks to +0.29 ± 0.25, more than half of it
+being a component the control shares.
+
+> Promotion rises cleanly and monotonically from 0 to 0.525 while performance
+> does not follow. The dose of the treatment demonstrably increased; it did not
+> carry through to what was learned.
+
+**(b) Where do diminishing returns appear — in promotion, not in performance.**
+
+There is no performance return to diminish. The diminishing return is in Section
+3.1's dose: promotion bought per unit of depth falls from 0.0517 at `d` = 7 to
+0.0105 at `d` = 50, **4.9-fold**. Cost meanwhile rises linearly with depth, 0.344
+to 2.458 seconds per query, **7.1-fold**. So as depth increases, **cost grows
+linearly while the dose saturates.** The knee is between `d` = 10 and `d` = 25.
+
+**(c) Which depth is the best trade-off — `d` = 0.**
+
+Every depth spends FLOPs per query and buys neither measurable performance nor
+communication. `d` = 50 spends 2.72 × 10¹¹ FLOPs per query — 2.46 s on this CPU —
+and spends 4.3 MB **more** communication. The only positive saving, +0.10 rounds
+at `d` = 25, is **one fifth** of its own standard error of 0.51 and is not
+distinguishable from zero. The Subtask 1.4 mechanism check returns the same
+verdict: *the largest saving is inside its own uncertainty, so this measurement
+resolves no saving.*
+
+### 4.3 How to read this result
+
+The result is negative but the measurement did not fail: it localises which link
+in the chain breaks.
+
+| Link | Measured | Status |
 |---|---|---|
-| 0 | 29.13 ± 0.69 | 22.32 ± 0.63 |
-| 3 | 29.44 ± 0.76 | 22.43 ± 0.64 |
-| 10 | 29.72 ± 0.55 | 22.70 ± 0.47 |
-| 50 | 29.41 ± 0.48 | 22.45 ± 0.46 |
+| depth → retrieval quality | Week 2 gold recall +3.92 pp; promotion 0 → 0.525 | ✅ **works** |
+| retrieval quality → training inputs | 52.5 % of prompt passages dense retrieval would not have chosen | ✅ **works** |
+| **training inputs → what is learned** | **every F1 difference inside the 0.31 noise floor** | ❌ **breaks** |
+| what is learned → rounds saved | nothing to measure | — |
 
-The seed-to-seed spread is larger than any difference between depths: the
-baseline alone ranges from 27.89 to 30.66, a span of 2.77 F1. This is why the
-design runs every depth at every seed — the comparison that Subtask 1.4 makes is
-paired within a seed, where that spread cancels.
+The break is at the **third link**. Demonstrably better passages reached the
+prompt, and at this model scale (135M) and this budget (59 rounds, 1.74 GB) that
+did not show up as a difference in weights. Read with the limitations in Section
+7, the conclusion is not that reranking is useless but that **under these
+conditions reranking does not buy back communication**.
 
 ---
 
@@ -306,7 +419,7 @@ target device.
 
 Stated here rather than discovered at the end.
 
-**The curves have not converged.** Fourteen of the sixteen peak at round 50 or
+**The curves have not converged.** Most of the twenty-four peak at round 50 or
 later, and training loss was still falling at round 59. Behaviour beyond this
 budget is not observed, and no target accuracy above what the baselines attained
 can be reported without extrapolating.
@@ -334,6 +447,6 @@ and standard errors are reported and no significance test is claimed.
 
 ## 8. Status
 
-Subtask 1.3 is complete. The sixteen curves exist, were bought with an identical
+Subtask 1.3 is complete. The twenty-four curves exist, were bought with an identical
 budget, and the budget's identity and the treatment's effect are both verified
 from the logs rather than asserted. Subtask 1.4 reads those curves.
