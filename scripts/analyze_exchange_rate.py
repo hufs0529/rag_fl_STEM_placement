@@ -166,7 +166,13 @@ def main() -> int:
     rounds_saved = {
         depth: midpoint["depths"][str(depth)]["rounds_saved"] for depth in curves_by_depth
     }
-    table = mechanism_table(recall_by_depth, divergence_by_depth, rounds_saved)
+    # 절약량과 함께 그 불확실성도 넘긴다. 판정이 0.1 라운드와 2 라운드를 같은
+    # 무게로 읽지 않도록 하는 것이 목적이다.
+    rounds_saved_stderr = {
+        depth: midpoint["depths"][str(depth)].get("rounds_stderr") for depth in curves_by_depth
+    }
+    table = mechanism_table(recall_by_depth, divergence_by_depth,
+                            rounds_saved, rounds_saved_stderr)
     mechanism = assess_mechanism(table)
 
     report = {

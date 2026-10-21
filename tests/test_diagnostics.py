@@ -32,6 +32,44 @@ def test_a_saving_without_less_drift_is_flagged_as_another_mechanism():
     assert assess_mechanism(table)["verdict"] == "other_mechanism"
 
 
+def test_a_saving_smaller_than_its_own_uncertainty_is_not_a_saving():
+    """실측에서 한 조건의 +0.0988 라운드(표준오차 0.515)가, 나머지가 전부 음수인데도
+    판정을 no_effect 에서 consistent 로 뒤집었다. 보고서에 "가설과 정합" 으로
+    실릴 뻔했다."""
+    table = mechanism_table(
+        recall_by_depth={0: 0.40, 25: 0.71, 50: 0.72},
+        divergence_by_depth={0: 0.090, 25: 0.083, 50: 0.080},
+        rounds_saved_by_depth={0: 0.0, 25: 0.0988, 50: -0.1465},
+        rounds_saved_stderr_by_depth={0: 0.175, 25: 0.515, 50: 0.858},
+    )
+    out = assess_mechanism(table)
+    assert out["verdict"] == "within_noise"
+    assert out["depths_with_resolved_saving"] == []
+    assert "0.099" in out["note"] and "0.515" in out["note"]
+
+
+def test_a_saving_larger_than_its_uncertainty_still_counts():
+    table = mechanism_table(
+        recall_by_depth={0: 0.40, 50: 0.53},
+        divergence_by_depth={0: 0.090, 50: 0.061},
+        rounds_saved_by_depth={0: 0.0, 50: 9.0},
+        rounds_saved_stderr_by_depth={0: 0.2, 50: 0.5},
+    )
+    out = assess_mechanism(table)
+    assert out["verdict"] == "consistent"
+    assert out["depths_with_resolved_saving"] == [50]
+
+
+def test_without_a_stderr_the_sign_alone_decides():
+    """표준오차를 안 넘기는 호출(예전 서명)도 그대로 동작해야 한다."""
+    table = mechanism_table(
+        recall_by_depth={0: 0.40, 50: 0.53},
+        divergence_by_depth={0: 0.090, 50: 0.061},
+        rounds_saved_by_depth={0: 0.0, 50: 0.3},
+    )
+    assert assess_mechanism(table)["verdict"] == "consistent"
+
+
 def test_no_saving_means_there_is_no_mechanism_to_explain():
     table = mechanism_table(
         recall_by_depth={0: 0.40, 50: 0.53},
