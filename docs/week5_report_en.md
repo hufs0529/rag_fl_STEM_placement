@@ -26,9 +26,104 @@ logs** — that separation is why Week 3 wrote everything to disk.
 
 ---
 
-## 2. Rounds to target
+## 2. What the treatment did, and why evaluation was held fixed
 
-### 2.1 Why interpolate
+Everything computed this week rests on two premises — that the treatment took
+effect as designed, and that every condition was scored under identical
+conditions. Week 4 verified both. What follows is **what those figures imply for
+this week's reading.**
+
+### 2.1 Promotion is the dose of the treatment, and it saturates in depth
+
+`promotion_rate` is the fraction of the three prompt passages dense retrieval
+would not have selected; `rank_change_rate` is the fraction of slots holding a
+different passage from the dense top three. The first measures how much the
+**content** changed, the second how much the **arrangement** did.
+
+| Depth | `rank_change_rate` | `promotion_rate` | Promotion per unit depth |
+|---|---|---|---|
+| 0 | 0.000 | **0.0000** | — |
+| **3** | **0.449** | **0.0000** | — |
+| 7 | 0.648 | 0.3619 | **0.0517** |
+| 10 | 0.677 | 0.4202 | 0.0420 |
+| 25 | 0.714 | 0.4976 | 0.0199 |
+| 50 | 0.725 | **0.5252** | **0.0105** |
+
+Promotion rises **monotonically** in depth — the treatment took effect as
+designed. But the increments collapse. Efficiency per unit of depth falls
+**4.9-fold** from `d` = 7 to `d` = 50, and raising depth five times over, from 10
+to 50, buys only **25 %** more promotion, 0.420 to 0.525.
+
+> The passages the cross-encoder will promote sit near the **front of the
+> candidate pool**. Rescoring the tail is largely wasted.
+
+**This fixes the shape of the cost model before it is written.** The recurring
+term `C_rerank = Q × d × FLOPs_ce` grows **linearly** in depth (Section 4), while
+the dose that spending buys **saturates**. Cost linear, effect saturating — the
+trade-off in Section 8 follows from that asymmetry.
+
+### 2.2 The gap between the two rates separates reshuffling from replacement
+
+At `d` = 7, 64.8 % of slots change but only 36.2 % hold a new passage. The
+difference of **28.6 points is the original three in a different order**. The gap
+narrows with depth (72.5 % against 52.5 % at `d` = 50, 20.0 points).
+
+So **shallow treatment is substantially reordering**, and only at depth does
+replacement dominate. That is why `d` = 3 exists as a control: the reordering
+component has to be measurable on its own.
+
+### 2.3 The control supplies this measurement's ruler
+
+`d` = 3 rescores the three passages dense retrieval already chose, so it **cannot
+promote a fourth** and its promotion rate is zero by construction. Its prompt
+content is identical to `d` = 0. Any difference in outcome between them is
+therefore variation **unrelated to retrieval quality**.
+
+```
+F1 difference      d = 3  vs  d = 0   =   +0.31 ± 0.37
+```
+
+**That figure is the scale on which this whole report is read.** The control
+beating 41 of 63 targets in Section 3, and every treatment effect sitting inside
+this span in Section 8, are two faces of the same fact. A treatment effect near
+0.31 is the size of the effect of **changing nothing**.
+
+### 2.4 Why the evaluation context is held fixed across depths
+
+Evaluation was held at `d` = 0 for every condition. Gold recall on the evaluation
+prompts at the final round is **0.497 / 0.494 / 0.497 / 0.494** regardless of
+depth — identical to three decimals, varying only with the partition seed.
+
+Fixing it is necessary because reranking can raise a score by **two** routes, and
+they are not the same thing.
+
+| Route | How it works | Relation to communication |
+|---|---|---|
+| **Training route** | better passages → better gradients → better weights | **Direct.** Better weights reach a target in fewer rounds, and rounds are bytes |
+| **Serving route** | better passages at inference → better answers from the same weights | **None.** It requires the reranker on every query forever and is independent of round count |
+
+Had each run been evaluated at its own depth, the two routes would be **summed
+inseparably**. A `d` = 50 run scoring higher could be scoring higher because its
+weights improved or because it was handed better documents at test time, and
+nothing in the number would say which. The serving route almost certainly does
+raise the score — Week 2 measured gold recall **3.92 points** higher at `d` = 50
+than at `d` = 0.
+
+> Folding that gain in would have **manufactured** the conclusion that reranking
+> reduces communication, while nothing had in fact been reduced.
+
+**What fixing it costs, and where that cost goes.** The F1 reported here is lower
+than a system actually deployed at `d` = 50 would score. That is deliberate: the
+question is not what the best serving configuration scores, but what the same
+communication budget buys in each condition. Nor is the serving gain discarded —
+the cost model in Section 4 charges it as **FLOPs per query**. It is priced, not
+treated as free.
+
+---
+
+## 3. Rounds to target
+
+### 3.1 Why interpolate
 
 Communication is proportional to rounds (one round = 8 clients × 1.843 MB × 2 =
 29.5 MB), so "how much was saved" and "how many rounds fewer" are the same
@@ -48,7 +143,7 @@ target 25.018 sits 99.9 % of the way between  ->  8 + 0.999 = 8.999 rounds
 Averaging the curves first would erase the between-seed spread the intervals are
 built from.
 
-### 2.2 τ is swept, not chosen
+### 3.2 τ is swept, not chosen
 
 Choosing a single τ makes the verdict an artefact of the choice, and that risk
 has already materialised here: at τ = 25.02 alone, `d` = 25 was the only positive
@@ -73,7 +168,7 @@ Both bounds are derived.
 
 **No number here was chosen by hand.**
 
-### 2.3 All 63 targets
+### 3.3 All 63 targets
 
 | `d` | Targets beaten | Of those, beyond the error | Rounds saved (median) | Range |
 |---|---|---|---|---|
@@ -93,7 +188,7 @@ savings swing to ±11. That tail is **not trimmed**: deciding where to cut would
 replace one arbitrary choice with another. It is read instead with statistics that
 magnitude cannot dominate.
 
-### 2.4 What the table says
+### 3.4 What the table says
 
 **The control comes first.** `d` = 3 rescores the three passages dense retrieval
 already chose, so it cannot promote a fourth and its prompt content is identical
@@ -106,7 +201,7 @@ at **26**, ahead of every treatment.
 And **all four treatments have a negative median.** They spent compute and spent
 more rounds.
 
-### 2.5 The matched-budget reading
+### 3.5 The matched-budget reading
 
 As a second reading independent of interpolation, F1 is compared directly **at
 equal cumulative communication**. At each of the 20 evaluation rounds, the
@@ -125,7 +220,7 @@ touches the interpolation reaches the same conclusion.
 
 ---
 
-## 3. The two-term cost model
+## 4. The two-term cost model
 
 ```
 one-off     C_index  = |corpus| × FLOPs_embed(passage)
@@ -151,7 +246,7 @@ traded against. Retriever capacity would not have been.
 
 ---
 
-## 4. The exchange rate
+## 5. The exchange rate
 
 One number with no assumptions in it.
 
@@ -177,12 +272,12 @@ The two assumptions **agree in sign at every depth**, so the conclusion does not
 depend on whether the index already exists. Charging for indexing enlarges the
 denominator and shrinks the magnitude; it does not change the direction.
 
-The one positive, +2.143 × 10⁻¹⁰ at `d` = 25, comes from a saving that Section 2.3
+The one positive, +2.143 × 10⁻¹⁰ at `d` = 25, comes from a saving that Section 3.3
 shows is positive at only 24 of 63 targets with a negative median.
 
 ---
 
-## 5. The break-even surface
+## 6. The break-even surface
 
 Multiplying the exchange rate by a deployment's parameters gives a common unit:
 **seconds**.
@@ -213,9 +308,9 @@ exists.
 
 ---
 
-## 6. The mechanism check
+## 7. The mechanism check
 
-### 6.1 The proposed path
+### 7.1 The proposed path
 
 ```
 depth ↑ → retrieval quality ↑ → clients learn the same task
@@ -233,7 +328,7 @@ The three measured quantities side by side:
 | 25 | 0.7120 | 1.3162 | +0.0071 | −0.113 |
 | 50 | 0.7244 | **1.3132** | +0.0101 | −0.374 |
 
-### 6.2 Why the correlations must not be read at face value
+### 7.2 Why the correlations must not be read at face value
 
 ```
 treatment strength ↔ divergence reduction    corr = +0.9135
@@ -258,7 +353,7 @@ rounds.
 > The first link correlates strongly across a change too small to measure; the
 > second link runs backwards. The proposed path is not supported.
 
-### 6.3 Verdict
+### 7.3 Verdict
 
 ```
 verdict: within_noise
@@ -273,7 +368,7 @@ can overturn it. `depths_with_resolved_saving` is the **empty list**.
 
 ---
 
-## 7. Depth against cost, performance and communication
+## 8. Depth against cost, performance and communication
 
 Putting the four axes together shows the shape of the trade-off.
 
@@ -303,7 +398,7 @@ bandwidth is zero at every query volume.
 
 ---
 
-## 8. Limitations
+## 9. Limitations
 
 The result is **not** "reranking is useless" but "under these conditions reranking
 does not buy back communication". The conditions are stated.
@@ -324,7 +419,7 @@ link that breaks is **training inputs → what is learned**.
 
 ---
 
-## 9. Status
+## 10. Status
 
 Subtask 1.4 is complete. The ten exchange rates, the break-even surface and the
 mechanism verdict are all in `results/logs/analysis/exchange_rate.json`, and the
