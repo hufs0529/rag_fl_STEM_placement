@@ -272,16 +272,35 @@ while no depth differs from another by a whole point. Pairing cancels that span.
 
 On the communication side every condition spent an identical **1.7400 GB** by
 design, so a saving can only arise as *reaching the same target in fewer rounds*.
-At the representative target τ = 25.02 F1:
 
-| `d` | Rounds to target | s.e. | Rounds saved | Communication saved |
+The target τ is **not chosen**. Choosing one would make the verdict an artefact of
+that choice, so every one of the 63 scores the four baseline runs actually
+recorded inside the comparable range is used as a target. Both bounds are derived:
+the lower is the highest score the baseline had already passed by round 1 (18.13),
+the upper the lowest of the baseline peaks (28.14). Below the first, every
+condition arrives in one round; above the second, some seed never arrives at all.
+
+At each target, rounds-to-target is interpolated per seed, averaged over the four,
+and differenced against the baseline. Across all 63:
+
+| `d` | Targets beaten | Of those, beyond the error | Rounds saved (median) | Range |
 |---|---|---|---|---|
-| 0 | 9.02 | 0.17 | — | — |
-| 3 | 9.63 | 0.28 | −0.61 | −17.8 MB |
-| 7 | 11.08 | 0.83 | −2.05 | −60.6 MB |
-| 10 | 10.05 | 0.71 | −1.03 | −30.4 MB |
-| 25 | 8.92 | 0.51 | **+0.10** | +2.9 MB |
-| 50 | 9.17 | 0.86 | −0.15 | −4.3 MB |
+| **3** *(control)* | **41 / 63** | **26 / 63** | **+0.149** | −0.88 ~ +11.35 |
+| 7 | 19 / 63 | 10 / 63 | −0.560 | −5.46 ~ +4.84 |
+| 10 | 20 / 63 | 16 / 63 | −0.213 | −2.47 ~ +8.16 |
+| 25 | 24 / 63 | 9 / 63 | −0.113 | −1.86 ~ +3.14 |
+| 50 | 15 / 63 | 7 / 63 | −0.374 | −5.75 ~ +3.91 |
+
+The median rather than the mean, and a count of targets rather than a size, for
+the same reason. As τ rises the baseline curve flattens — 9.0 rounds at τ = 25.02,
+38.7 at τ = 28.14 — so a tenth of an F1 point becomes ten rounds and savings swing
+to ±11. That tail is **not trimmed**: deciding where to cut would replace one
+arbitrary choice with another. It is read instead with statistics magnitude cannot
+dominate.
+
+"Beyond the error" counts the targets where the saving exceeds its own standard
+error. With four seeds the measurement itself moves by ±0.2 to ±0.9 rounds, and a
+saving smaller than that is not a saving.
 
 ### 4.2 Three questions the table is there to answer
 
@@ -311,11 +330,18 @@ linearly while the dose saturates.** The knee is between `d` = 10 and `d` = 25.
 
 Every depth spends FLOPs per query and buys neither measurable performance nor
 communication. `d` = 50 spends 2.72 × 10¹¹ FLOPs per query — 2.46 s on this CPU —
-and spends 4.3 MB **more** communication. The only positive saving, +0.10 rounds
-at `d` = 25, is **one fifth** of its own standard error of 0.51 and is not
-distinguishable from zero. The Subtask 1.4 mechanism check returns the same
-verdict: *the largest saving is inside its own uncertainty, so this measurement
-resolves no saving.*
+and beats the baseline at only 15 of 63 targets, with a median of **0.374 rounds
+slower**. All four treatments have a negative median.
+
+The decisive observation is that **the control comes first**. `d` = 3 cannot
+change prompt content, yet it beats the baseline at **41 of 63** targets and
+clears the error at **26**, ahead of every treatment. When the arm that changes
+nothing wins most often, what the wins measure is the variation of the
+measurement, not the effect of the treatment.
+
+The Subtask 1.4 mechanism check returns the same verdict: *the largest median
+saving is +0.149 rounds at `d` = 3, clearing its own standard error at only 26 of
+63 targets; no depth resolves a saving at a majority of targets.*
 
 ### 4.3 How to read this result
 
