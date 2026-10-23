@@ -249,7 +249,7 @@ cost model, curve interpolation — depend only on `numpy`/`pyyaml` and their
 tests run without a GPU:
 
 ```bash
-pytest -q                                # 321 tests on this branch
+pytest -q                                # 323 tests on this branch
 pytest -q -m "not network and not slow"
 ```
 

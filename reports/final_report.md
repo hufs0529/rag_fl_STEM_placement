@@ -2,13 +2,13 @@
 
 **The Exchange Rate of Client-Side Reranking in Federated LLM Fine-Tuning**
 
-*Generated from `results/logs/analysis/exchange_rate.json` on 2026-10-21.*
+*Generated from `results/logs/analysis/exchange_rate.json` on 2026-10-23.*
 
 ---
 
 ## 1. Summary
 
-At the representative target of 25.02 F1, reranking at d = 50 was 0.15 rounds SLOWER than dense retrieval alone: the treatment cost communication rather than saving it. The largest rounds-to-target saving is inside its own uncertainty, so this measurement resolves no saving and there is no mechanism to explain.
+Across all 63 targets the baseline attains, reranking at d = 50 reached them 0.37 rounds SLOWER than dense retrieval alone at the median, beating the baseline at 15 of 63 targets and clearing its own standard error at 7. No single target decides this: every score the baseline recorded inside the comparable range is used as one. No depth resolves a saving at a majority of targets, so this measurement resolves no saving and there is no mechanism to explain.
 
 ## 2. What the question was
 
@@ -129,19 +129,19 @@ task → update divergence ↓ → rounds ↓.
 | Condition | Treatment strength | Gain vs baseline | Divergence | Reduction vs baseline | Rounds saved |
 |---|---|---|---|---|---|
 | d = 0 | 0.0000 | 0.0000 | 1.3234 | 0.0000 | 0.00 |
-| d = 3 | 0.4505 | 0.4505 | 1.3218 | 0.0015 | -0.61 |
-| d = 7 | 0.6484 | 0.6484 | 1.3143 | 0.0091 | -2.05 |
-| d = 10 | 0.6764 | 0.6764 | 1.3151 | 0.0083 | -1.03 |
-| d = 25 | 0.7120 | 0.7120 | 1.3162 | 0.0071 | 0.10 |
-| d = 50 | 0.7244 | 0.7244 | 1.3132 | 0.0101 | -0.15 |
+| d = 3 | 0.4505 | 0.4505 | 1.3218 | 0.0015 | 0.15 |
+| d = 7 | 0.6484 | 0.6484 | 1.3143 | 0.0091 | -0.56 |
+| d = 10 | 0.6764 | 0.6764 | 1.3151 | 0.0083 | -0.21 |
+| d = 25 | 0.7120 | 0.7120 | 1.3162 | 0.0071 | -0.11 |
+| d = 50 | 0.7244 | 0.7244 | 1.3132 | 0.0101 | -0.37 |
 
-**Verdict: within_noise** — the largest rounds-to-target saving, 0.099 rounds at d=25, is inside its own uncertainty (s.e. 0.515); no saving is resolved by this measurement
+**Verdict: within_noise** — the largest median saving, 0.149 rounds at d=3, clears its own standard error at only 26 of 63 targets; no depth resolves a saving at a majority of targets
 
 Correlations across depths: recall gain vs divergence reduction
 r = +0.914, recall gain vs
-rounds saved r = +0.168, divergence
+rounds saved r = -0.652, divergence
 reduction vs rounds saved
-r = -0.163.
+r = -0.882.
 
 ## 9. Limitations
 

@@ -119,3 +119,28 @@ def test_mechanism_table_pairs_recall_gain_with_divergence_reduction():
 def test_markdown_table_shape():
     table = markdown_table(["a", "b"], [["1", "2"]])
     assert table.splitlines()[1] == "|---|---|"
+
+
+def _report_with_sweep(median=-0.374, beat=15, resolved=7, n=63):
+    r = _report()
+    deepest = max(r["tau_sweep"][0]["depths"])
+    r["sweep_summary"] = {deepest: {
+        "n_tau": n, "tau_with_saving": beat, "tau_with_resolved_saving": resolved,
+        "median_rounds_saved": median, "fraction_resolved": resolved / n,
+    }}
+    return r
+
+
+def test_the_headline_reads_the_whole_sweep_not_one_target():
+    """머리글은 보고서에서 가장 먼저 읽히는 문장이다. tau 한 점을 실으면 그 점이
+    깊이를 실제보다 좋게도 나쁘게도 보이게 한다."""
+    text = headline(_report_with_sweep())
+    assert "all 63 targets" in text
+    assert "15 of 63" in text
+    assert "0.37 rounds SLOWER" in text
+    assert "representative target" not in text
+
+
+def test_the_headline_falls_back_when_there_is_no_sweep_summary():
+    text = headline(_report())
+    assert "representative target" in text

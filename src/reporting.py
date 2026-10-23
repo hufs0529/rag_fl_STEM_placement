@@ -116,23 +116,44 @@ def mechanism_table_markdown(report: Dict) -> str:
 
 
 def headline(report: Dict) -> str:
-    """한 문단 요약 - 부호와 규모를 먼저 말한다."""
+    """한 문단 요약 - 부호와 규모를 먼저 말한다.
+
+    **전구간을 말한다.** 예전에는 representative tau 한 점의 절약을 머리글에
+    실었는데, 그 한 점이 깊이를 실제보다 좋게도 나쁘게도 보이게 한다 - 실측에서
+    tau=25.02 에서는 d=25 만 양수였으나 63 점 전체 중앙값은 음수였다. 보고서의
+    첫 문장이 가장 먼저 읽히는 자리이므로 여기부터 전구간이어야 한다.
+    """
     entry = _representative(report)
     metric = report["metric"].upper()
     deepest = max(int(d) for d in entry["depths"])
-    info = entry["depths"][str(deepest)]
     verdict = report["mechanism"]["verdict"]
+    sweep = (report.get("sweep_summary") or {}).get(str(deepest))
 
-    if info["rounds_saved"] is None:
+    if sweep and sweep.get("median_rounds_saved") is not None:
+        n = sweep["n_tau"]
+        beat = sweep["tau_with_saving"]
+        resolved = sweep["tau_with_resolved_saving"]
+        median = sweep["median_rounds_saved"]
+        verb = ("earlier than" if median > 0 else "SLOWER than")
+        direction = (
+            f"Across all {n} targets the baseline attains, reranking at d = {deepest} reached "
+            f"them {abs(median):.2f} rounds {verb} dense retrieval alone at the median, beating "
+            f"the baseline at {beat} of {n} targets and clearing its own standard error at "
+            f"{resolved}. No single target decides this: every score the baseline recorded "
+            f"inside the comparable range is used as one."
+        )
+    elif entry["depths"][str(deepest)]["rounds_saved"] is None:
         direction = (f"At the representative target of {entry['tau']:.2f} {metric}, the deepest "
                      f"condition (d = {deepest}) did not reach the target in every seed, so no "
                      "exchange rate is defined there.")
-    elif info["rounds_saved"] > 0:
+    elif entry["depths"][str(deepest)]["rounds_saved"] > 0:
+        info = entry["depths"][str(deepest)]
         direction = (f"At the representative target of {entry['tau']:.2f} {metric}, reranking at "
                      f"d = {deepest} reached the target {info['rounds_saved']:.2f} rounds earlier "
                      f"than dense retrieval alone, worth {info['saved_mb']:.1f} MB of communication "
                      f"across {report['num_clients']} clients.")
     else:
+        info = entry["depths"][str(deepest)]
         direction = (f"At the representative target of {entry['tau']:.2f} {metric}, reranking at "
                      f"d = {deepest} was {abs(info['rounds_saved']):.2f} rounds SLOWER than dense "
                      "retrieval alone: the treatment cost communication rather than saving it.")
@@ -143,9 +164,8 @@ def headline(report: Dict) -> str:
         "other_mechanism": "Rounds were saved without a reduction in client-update divergence, "
                            "so the gain arrives by a different mechanism than the one proposed.",
         "no_effect": "No rounds-to-target saving was observed, so there is no mechanism to explain.",
-        "within_noise": "The largest rounds-to-target saving is inside its own uncertainty, so "
-                        "this measurement resolves no saving and there is no mechanism to "
-                        "explain.",
+        "within_noise": "No depth resolves a saving at a majority of targets, so this "
+                        "measurement resolves no saving and there is no mechanism to explain.",
     }[verdict]
 
     return direction + " " + mechanism

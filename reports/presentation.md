@@ -1,6 +1,6 @@
 # Presentation outline
 
-*Generated on 2026-10-21.*
+*Generated on 2026-10-23.*
 
 ## Slide 1 — The overlooked factor
 
@@ -29,7 +29,7 @@ fixed by a pilot that found the smallest `K` with measurable client drift.
 
 ## Slide 5 — Result
 
-At the representative target of 25.02 F1, reranking at d = 50 was 0.15 rounds SLOWER than dense retrieval alone: the treatment cost communication rather than saving it. The largest rounds-to-target saving is inside its own uncertainty, so this measurement resolves no saving and there is no mechanism to explain.
+Across all 63 targets the baseline attains, reranking at d = 50 reached them 0.37 rounds SLOWER than dense retrieval alone at the median, beating the baseline at 15 of 63 targets and clearing its own standard error at 7. No single target decides this: every score the baseline recorded inside the comparable range is used as one. No depth resolves a saving at a majority of targets, so this measurement resolves no saving and there is no mechanism to explain.
 
 At τ = 25.02: **-4.3 MB** saved at d = 50.
 
