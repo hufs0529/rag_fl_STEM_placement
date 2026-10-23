@@ -204,20 +204,59 @@ loses.
 So the target is **not chosen**. Every score the baseline actually recorded is
 used.
 
+**Where 80 comes from.** The baseline `d` = 0 was run at four seeds, and each run
+is evaluated at 20 fixed rounds (1 to 10, then every fifth, then 59).
+
 ```
-baseline (d = 0) runs 4 × evaluations 20  =  80 scores
+4 runs × 20 evaluations  =  80 scores      <- every candidate target
 ```
 
-Two groups are removed.
+These 80 are **scores that were actually measured**, not a grid at arbitrary
+intervals.
 
-| Removed | How many | Why |
+**18.13 — the lower bound.** Look at what the four seeds scored **at round 1**.
+
+| Seed | Round-1 score |
+|---|---|
+| 1 | **18.13** |
+| 2 | 17.38 |
+| 3 | 17.89 |
+| 4 | 17.15 |
+
+The **highest, 18.13**, is the bound. Set the target lower — say 17.50 — and seed
+1 is already at 18.13 after one round, so it **arrives at round 1**, and so does
+seed 3. Every condition arrives at once and **there is nothing left to compare**.
+18.13 is **the lowest score all four seeds must get past round 1 to reach**.
+
+**28.14 — the upper bound.** Look at the **peak** each seed reached across the
+full 59 rounds.
+
+| Seed | Peak |
+|---|---|
+| 1 | 28.44 |
+| 2 | 29.92 |
+| 3 | **28.14** |
+| 4 | 30.66 |
+
+The **lowest, 28.14**, is the bound. Set the target higher — say 29.00 — and seed
+3, which peaks at 28.14, **never arrives at all**. Only two of the four seeds
+produce a value and no average can be taken. 28.14 is **the highest score all
+four seeds can reach**.
+
+**17 — what is dropped.** Of the 80, seventeen fall outside the two bounds.
+
+| Dropped | How many | Which values |
 |---|---|---|
-| **below 18.13** | 3 | the baseline had **already passed it by round 1**; every condition arrives at once and nothing can be compared |
-| **above 28.14** | 14 | some seed **never arrives**, even after the full budget |
+| below 18.13 | **3** | 17.15, 17.38, 17.89 — the round-1 scores of seeds 2, 3 and 4 |
+| above 28.14 | **14** | 28.44 to 30.66 — mostly late-round scores from seeds 2 and 4 |
 
-**80 − 17 = 63.** Both bounds are set by the data too — the lower is the highest
-of the four seeds' round-1 scores, the upper the lowest of their peaks. **No
-number here was chosen by hand.**
+```
+80 − 3 − 14  =  63
+```
+
+**Both bounds were set by the data.** The lower is the maximum of the four
+round-1 scores, the upper the minimum of the four peaks. **Nothing in this
+section was chosen by hand.**
 
 ### 3.3 The result
 
@@ -252,9 +291,46 @@ The four conditions that really did change documents managed 15 to 24, and are
 
 ### 3.5 A second check that uses no interpolation
 
-Arrival rounds are read between evaluated points, so the reading itself could be
-doubted. Scores were therefore also compared **directly at equal communication
-spent**.
+The arrival rounds of Section 3.3 are read **between** evaluated points. The
+reading itself could be doubted, so a different axis was fixed and the question
+asked again.
+
+**The method.** Every condition spends the same bytes at the same round, so
+**round N is a point of equal budget**. Comparing scores there needs no
+interpolation at all.
+
+| | Section 3.3 | Section 3.5 |
+|---|---|---|
+| Held fixed | the **score** (a target) | the **budget** (rounds = bytes) |
+| Compared | the **round** of arrival | the **score** at that point |
+| Interpolation | required | **none** |
+| Points | 63 targets | 20 evaluation rounds |
+
+**One point worked through.** Round 1 — where both conditions have spent exactly
+29.5 MB.
+
+| Seed | `d` = 0 | `d` = 3 | Difference |
+|---|---|---|---|
+| 1 | 18.13 | 18.71 | +0.58 |
+| 2 | 17.38 | 17.65 | +0.27 |
+| 3 | 17.89 | 18.50 | +0.62 |
+| 4 | 17.15 | 17.51 | +0.36 |
+| | | **mean** | **+0.458** |
+| | | **error** | **0.084** |
+
+**"Separates from zero"** means `|mean| > 2 × error`.
+
+```
+|0.458|  >  2 × 0.084 = 0.168      ->  separated
+```
+
+It says the four seeds differed **consistently in one direction** — the values
+cluster between +0.27 and +0.62. By contrast `d` = 3 at round 2 was +0.084 ±
+0.213: the error exceeds the difference, so it does not separate. The factor of
+two is the usual convention, the point at which a difference this large would
+arise by chance about 5 % of the time if the true difference were zero.
+
+**Counting that judgement across the 20 points:**
 
 | `d` | Points where the difference separates from zero |
 |---|---|
@@ -264,8 +340,10 @@ spent**.
 | 25 | 5 / 20 |
 | 50 | 6 / 20 |
 
-The control separates **as often as `d` = 10**. A reading that never touches the
-interpolation reaches the same conclusion.
+**The control separates as often as `d` = 10 and more often than the other three
+treatments.** A reading that never touches the interpolation reaches the same
+conclusion as Section 3.4 — two methods fixing different axes give the same
+answer.
 
 ---
 
@@ -334,18 +412,42 @@ only 24 of 63 targets and typically loses.
 
 ## 6. Break-even — on what link would it pay off?
 
-Multiplying the exchange rate by a deployment's parameters gives a common unit:
-**seconds**.
+Section 5's exchange rate is bytes divided by compute — a ratio of two unlike
+things. To say whether a real deployment gains or loses, both have to be put in
+the **same unit**. That unit is **seconds**.
 
 ```
-transfer time saved = bytes saved ÷ bandwidth
-compute time added  = total compute ÷ device speed
+transfer time saved  =  bytes saved × 8 ÷ bandwidth      (time to push bits down the link)
+compute time added   =  total compute ÷ device speed     (time to run the reranker)
 ```
 
-Reranking pays off on **slow** links — a slow link makes bytes expensive, and
-bytes are what it is buying back.
+The bandwidth at which the two are equal is the **break-even bandwidth**.
 
-| Queries | Break-even bandwidth |
+```
+bytes saved × 8 ÷ B*  =  compute ÷ device speed
+             B*  =  bytes saved × 8 × device speed ÷ compute
+```
+
+**On links slower than `B*`, reranking pays off.** A slower link takes longer per
+byte, so the bytes saved are worth more. On a very fast link bytes are cheap and
+there is no reason to spend compute to avoid them.
+
+### Why query volume is an axis
+
+**Query volume** `Q` is how many queries the deployed system will serve over its
+life. Reranking runs **on every one of them**, forever.
+
+```
+total compute  =  Q × depth × compute per pair
+```
+
+The **bytes saved, by contrast, happen once during training**. So as queries
+accumulate the denominator grows while the numerator does not, and `B*` falls. A
+system serving many queries has a narrower window in which reranking pays.
+
+### Measured
+
+| Query volume `Q` | Break-even bandwidth |
 |---|---|
 | 1,000 | **0 Mbps** |
 | 10,000 | 0 Mbps |
@@ -353,9 +455,17 @@ bytes are what it is buying back.
 | 1,000,000 | 0 Mbps |
 | 10,000,000 | 0 Mbps |
 
-**Zero means no such link exists.** Normally this table reads *"pays off below X
-Mbps"*. When the bytes saved are negative, no link is slow enough, so no `X`
-exists.
+**Zero means no such link exists.** The bytes saved are negative, so `B*` in the
+formula above comes out negative, and a negative bandwidth is not a thing. It is
+reported as zero.
+
+Normally this table reads *"at 1,000 queries it pays off below 1.85 Mbps, at a
+million below 0.002"*, narrowing the verdict to **a corner of very slow links and
+modest query volumes**. Here there is no corner — **no link is slow enough and no
+query volume small enough.**
+
+> That the table is all zeros is itself the result. **There is no operating
+> region in which reranking buys back communication.**
 
 ---
 
@@ -373,6 +483,15 @@ they scatter, the server's average is blurred and more rounds are needed — tha
 was the hypothesis.
 
 ### 7.2 Divergence barely moved
+
+What the two columns measure, first.
+
+| Column | What it measures | Why this and not depth |
+|---|---|---|
+| **Treatment strength** | the share of the three prompt slots holding a **different document** (Section 2.2's "slots changed") | depth `d` only says **how far down the list was examined**; it does not say how much the prompt actually changed. Doubling `d` while the slots stay put is not a stronger treatment |
+| **Divergence** | how **differently the eight clients' updates point** | the middle link of the hypothesis. Clients learning the same task should move in similar directions |
+
+If the hypothesis holds, **divergence should fall as treatment strength rises**.
 
 | `d` | Treatment strength | Divergence |
 |---|---|---|
