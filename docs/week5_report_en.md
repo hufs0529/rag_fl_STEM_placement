@@ -84,7 +84,43 @@ is mostly wasted.
 > This saturation matters later. **Compute grows in proportion to depth while the
 > dose it buys flattens** (Section 8).
 
-### 2.2 `d` = 3 — this measurement's ruler
+### 2.2 A slot changing is not the same as a document changing
+
+The three prompt slots are counted two ways.
+
+| Counted | Meaning |
+|---|---|
+| **Slot changed** | a **different document** sits there (reordering counts) |
+| **New document** | that document is one the **original retrieval would not have chosen** |
+
+The gap between them is what matters.
+
+| `d` | Slots changed | New documents | Gap |
+|---|---|---|---|
+| 3 | 45.0 % | **0 %** | **45.0 pp** |
+| 7 | 64.8 % | 36.2 % | **28.6 pp** |
+| 10 | 67.6 % | 42.0 % | 25.6 pp |
+| 25 | 71.2 % | 49.8 % | 21.4 pp |
+| 50 | 72.4 % | 52.5 % | **19.9 pp** |
+
+**That gap is the original three in a different order.** At `d` = 7, 64.8 % of
+slots changed but only 36.2 % hold a new document; the remaining **28.6 points is
+reordering**.
+
+And the gap narrows with depth, 45.0 down to 19.9 points. So:
+
+> **Shallow treatment is substantially reordering; only at depth does replacement
+> dominate.**
+
+(Both figures are averaged over all rounds. The new-document share is **identical
+at every round**, because the retrieval cache was frozen in Week 2 — a change
+there would be a defect.)
+
+That is exactly why `d` = 3 exists as a control. It is the condition where 45.0 %
+of slots change while 0 % are new — a condition that does **nothing but reorder** —
+so the reordering component can be subtracted from the treatment effect.
+
+### 2.3 `d` = 3 — this measurement's ruler
 
 Picking three out of three gives **those three**. A fourth cannot arrive. Only the
 order changes.
@@ -109,7 +145,7 @@ a person retaking one exam scores slightly differently.
 > **That 0.31 is the scale this whole report is read on.** A treatment effect near
 > 0.31 is the size of the effect of changing nothing.
 
-### 2.3 Evaluation was held at `d` = 0 for every condition
+### 2.4 Evaluation was held at `d` = 0 for every condition
 
 A model trained at `d` = 50 is **scored on `d` = 0 documents**. The logs confirm
 it happened: evaluation document quality was identical to three decimals
