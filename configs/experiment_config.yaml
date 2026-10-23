@@ -305,6 +305,16 @@ cost:
   # the exponent is signed, so `1.0e12` would silently load as the STRING
   # "1.0e12" and the cost model would multiply a string by a depth.
   device_throughput_flops: 1.0e+12    # effective FLOP/s of the client accelerator
+  # 아래 두 스윕은 tau 와 **성격이 다르다.** tau 는 이 측정에 관한 값이라 데이터에서
+  # 유도된다(기준선 곡선이 실제로 지나간 점). 대역폭과 질문 수는 **아직 일어나지 않은
+  # 배치**에 관한 값이라 이 실험이 알 수 없다 - 같은 시스템을 병원에 깔면 하루 수백
+  # 질문, 검색 서비스면 수백만이다. 측정으로 정할 수 없으므로 하나 고르지 않고
+  # **쓸어서 곡면으로 보고한다.** 고르지 않는다는 점에서 tau 와 같은 원칙이다.
+  #
+  # 범위는 로그 간격으로 자릿수를 덮는다: 대역폭 1 Mbps(제약된 링크) ~ 1 Gbps
+  # (데이터센터), 질문 수 10^3(소규모 파일럿) ~ 10^7(대규모 운영)로 네 자릿수다.
+  # 손익분기 대역폭이 질문 수에 **반비례**하므로(재순위는 질문마다 반복되고 절약은
+  # 학습 때 한 번뿐이다) 자릿수를 덮는 편이 선형 간격보다 읽기 좋다.
   bandwidth_sweep_mbps: [1, 5, 10, 25, 50, 100, 250, 1000]
   query_volume_sweep: [1.0e+3, 1.0e+4, 1.0e+5, 1.0e+6, 1.0e+7]
   # tau 격자는 더 이상 선언하지 않는다. 균등 격자를 쓰면 간격을 사람이 정해야

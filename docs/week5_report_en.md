@@ -432,6 +432,30 @@ bytes saved × 8 ÷ B*  =  compute ÷ device speed
 byte, so the bytes saved are worth more. On a very fast link bytes are cheap and
 there is no reason to spend compute to avoid them.
 
+### Query volume and bandwidth are **declared**, not derived
+
+One thing to be clear about. The target τ in Section 3.2 was **set by the data** —
+it is the set of points the baseline curves actually passed through, and both
+bounds are derived from them. Query volume and bandwidth, by contrast, are
+**declared in the config**.
+
+They have to be. Both describe a **deployment that has not happened**. The same
+system serves a few hundred queries a day in a hospital and millions in a search
+product; no measurement here can settle which.
+
+So neither is chosen — both are **swept, and the verdict reported as a surface**.
+That is the same principle τ follows. The ranges cover orders of magnitude on a
+log spacing.
+
+| Axis | Range | What the ends mean |
+|---|---|---|
+| Bandwidth | 1 – 1,000 Mbps | a constrained link – a datacentre |
+| Query volume | 10³ – 10⁷ | a small pilot – a large deployment |
+
+**And this result does not depend on those ranges**, because, as below, the
+break-even bandwidth is zero regardless of query volume — any range gives the
+same conclusion.
+
 ### Why query volume is an axis
 
 **Query volume** `Q` is how many queries the deployed system will serve over its
@@ -458,6 +482,12 @@ system serving many queries has a narrower window in which reranking pays.
 **Zero means no such link exists.** The bytes saved are negative, so `B*` in the
 formula above comes out negative, and a negative bandwidth is not a thing. It is
 reported as zero.
+
+**That all five rows are zero is the point.** Total compute scales exactly with
+query volume, from 2.72 × 10¹⁴ to 2.72 × 10¹⁸ — **ten thousand times** — and `B*`
+is zero throughout, because while the numerator, the bytes saved, is negative
+**no query volume changes the sign**. The conclusion does not depend on the range
+declared above.
 
 Normally this table reads *"at 1,000 queries it pays off below 1.85 Mbps, at a
 million below 0.002"*, narrowing the verdict to **a corner of very slow links and
