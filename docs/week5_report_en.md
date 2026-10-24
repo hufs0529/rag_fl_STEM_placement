@@ -381,14 +381,32 @@ traded against.
 
 ---
 
-## 5. The exchange rate — one number with no assumptions in it
+## 5. The exchange rate — bytes saved divided by compute spent
 
 ```
 exchange rate = bytes saved ÷ extra compute spent
 ```
 
-No bandwidth, no device. A particular deployment's verdict is this number
-multiplied by that deployment's parameters.
+**No bandwidth and no device speed enter it.** Those are multiplied in at Section
+6. A particular deployment's verdict is this number multiplied by that
+deployment's parameters.
+
+**Query volume does enter it**, though. The numerator, the bytes saved, happens
+once during training; the denominator, the reranking compute, accumulates per
+query. The table below is quoted at **100,000 queries**, and the artefact records
+that (`exchange_rate_query_volume`).
+
+**The sign, however, is independent of query volume.** The denominator is always
+positive, so the sign of the rate is the sign of the bytes saved. Changing the
+volume only scales the magnitude by 1/Q:
+
+| Queries | Rate at `d` = 50 | Sign |
+|---|---|---|
+| 1,000 | −1.589 × 10⁻⁸ | negative |
+| 100,000 | −1.589 × 10⁻¹⁰ | negative |
+| 10,000,000 | −1.589 × 10⁻¹² | negative |
+
+**The conclusion holds at any query volume.**
 
 | `d` | Bytes saved | Rate (index exists) | Rate (index built) |
 |---|---|---|---|

@@ -5530,6 +5530,7 @@
       "saved_bytes": -17848665.502865817,
       "total_flops": 1631247129600000.0,
       "bytes_per_flop": -1.094172990651791e-08,
+      "query_volume": 100000.0,
       "indexing_flops": 0.0,
       "reranking_flops": 1631247129600000.0,
       "amortise_indexing": true
@@ -5538,6 +5539,7 @@
       "saved_bytes": -17848665.502865817,
       "total_flops": 2718725350400000.0,
       "bytes_per_flop": -6.565085914338417e-09,
+      "query_volume": 100000.0,
       "indexing_flops": 1087478220800000.0,
       "reranking_flops": 1631247129600000.0,
       "amortise_indexing": false
@@ -5546,6 +5548,7 @@
       "saved_bytes": -60562761.41325512,
       "total_flops": 3806243302400000.0,
       "bytes_per_flop": -1.591142672752099e-08,
+      "query_volume": 100000.0,
       "indexing_flops": 0.0,
       "reranking_flops": 3806243302400000.0,
       "amortise_indexing": true
@@ -5554,6 +5557,7 @@
       "saved_bytes": -60562761.41325512,
       "total_flops": 4893721523200000.0,
       "bytes_per_flop": -1.2375604358797512e-08,
+      "query_volume": 100000.0,
       "indexing_flops": 1087478220800000.0,
       "reranking_flops": 3806243302400000.0,
       "amortise_indexing": false
@@ -5562,6 +5566,7 @@
       "saved_bytes": -30413187.09646695,
       "total_flops": 5437490432000000.0,
       "bytes_per_flop": -5.593239652889002e-09,
+      "query_volume": 100000.0,
       "indexing_flops": 0.0,
       "reranking_flops": 5437490432000000.0,
       "amortise_indexing": true
@@ -5570,6 +5575,7 @@
       "saved_bytes": -30413187.09646695,
       "total_flops": 6524968652800000.0,
       "bytes_per_flop": -4.6610472348271e-09,
+      "query_volume": 100000.0,
       "indexing_flops": 1087478220800000.0,
       "reranking_flops": 5437490432000000.0,
       "amortise_indexing": false
@@ -5578,6 +5584,7 @@
       "saved_bytes": 2913087.8771462888,
       "total_flops": 1.359372608e+16,
       "bytes_per_flop": 2.1429649678113043e-10,
+      "query_volume": 100000.0,
       "indexing_flops": 0.0,
       "reranking_flops": 1.359372608e+16,
       "amortise_indexing": true
@@ -5586,6 +5593,7 @@
       "saved_bytes": 2913087.8771462888,
       "total_flops": 1.46812043008e+16,
       "bytes_per_flop": 1.9842295069673204e-10,
+      "query_volume": 100000.0,
       "indexing_flops": 1087478220800000.0,
       "reranking_flops": 1.359372608e+16,
       "amortise_indexing": false
@@ -5594,6 +5602,7 @@
       "saved_bytes": -4319159.55951573,
       "total_flops": 2.718745216e+16,
       "bytes_per_flop": -1.5886591851627664e-10,
+      "query_volume": 100000.0,
       "indexing_flops": 0.0,
       "reranking_flops": 2.718745216e+16,
       "amortise_indexing": true
@@ -5602,11 +5611,13 @@
       "saved_bytes": -4319159.55951573,
       "total_flops": 2.82749303808e+16,
       "bytes_per_flop": -1.5275579820520587e-10,
+      "query_volume": 100000.0,
       "indexing_flops": 1087478220800000.0,
       "reranking_flops": 2.718745216e+16,
       "amortise_indexing": false
     }
   },
+  "exchange_rate_query_volume": 100000.0,
   "break_even_surfaces": {
     "d3_amortised": {
       "depth": 3,

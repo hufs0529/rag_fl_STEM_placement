@@ -120,19 +120,29 @@ def main() -> int:
     # 이 지점은 표 하나로 요약하기 위한 예시일 뿐이다.
     midpoint = sweep[len(sweep) // 2]
     throughput = float(cfg.cost.device_throughput_flops)
+    # 환율을 적을 질문 수. 스윕의 가운데 값을 쓰되 **기록으로 남긴다** - 예전에는
+    # query_volume_sweep[2] 라고만 적혀 있어, 스윕 길이를 바꾸면 "가운데" 가 조용히
+    # 옮겨 가고 산출물 어디에도 어느 Q 에서 잰 값인지가 없었다.
+    volumes = sorted(float(q) for q in cfg.cost.query_volume_sweep)
+    rate_query_volume = volumes[len(volumes) // 2] if volumes else 1.0
     surfaces, rates = {}, {}
     for depth in sorted(curves_by_depth):
         if depth == baseline_depth:
             continue
         saved = midpoint["depths"][str(depth)]["saved_bytes"]
         for amortise in (True, False):
-            cost = depth_cost(depth, float(cfg.cost.query_volume_sweep[2]),
+            cost = depth_cost(depth, rate_query_volume,
                               cfg.data.corpus_size, flops_per_pair, flops_per_passage, amortise)
             key = f"d{depth}_{'amortised' if amortise else 'with_indexing'}"
             rates[key] = {
                 "saved_bytes": saved,
                 "total_flops": cost["total_flops"],
                 "bytes_per_flop": exchange_rate(saved, cost["total_flops"]),
+                # 환율은 질문 수에 의존한다. 분자(절약 바이트)는 학습 때 한 번
+                # 생기고 분모(재순위 계산량)는 질문마다 쌓이므로, 크기는 1/Q 로
+                # 줄어든다. **부호는 Q 와 무관하다** - 분모가 항상 양수이므로
+                # 부호는 절약 바이트의 부호다. 결론이 이 값에 기대지 않는 이유다.
+                "query_volume": rate_query_volume,
                 **cost,
             }
             surfaces[key] = break_even_surface(
@@ -241,6 +251,7 @@ def main() -> int:
             },
         },
         "exchange_rates": rates,
+        "exchange_rate_query_volume": rate_query_volume,
         "break_even_surfaces": surfaces,
         "mechanism": {**table, **mechanism},
         "sweep_summary": {str(d): v for d, v in sweep_by_depth.items()},
