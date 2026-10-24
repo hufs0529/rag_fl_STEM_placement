@@ -2,7 +2,7 @@
 
 **The Exchange Rate of Client-Side Reranking in Federated LLM Fine-Tuning**
 
-*Generated from `results/logs/analysis/exchange_rate.json` on 2026-10-23.*
+*Generated from `results/logs/analysis/exchange_rate.json` on 2026-10-24.*
 
 ---
 
