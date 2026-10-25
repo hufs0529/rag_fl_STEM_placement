@@ -32,8 +32,9 @@ identified.
 **The single most important finding.** `d` = 3 is a condition that **cannot change
 the documents** — it reorders the three already chosen. Yet it scored higher and
 saved rounds more often than every condition that really did change documents.
-**When the arm that changes nothing wins, what the wins measure is the variation
-of the measurement, not the effect of the treatment.**
+**When the arm whose documents cannot improve wins, the wins are not the effect of
+better documents.** Section 2.3 re-measures the treatments against this control as
+the baseline, removing any ordering effect, and reaches the same conclusion.
 
 **This is not a failed experiment.** The conclusion is not *"reranking is
 useless"* but *"at this model scale and this budget, reranking does not buy back
@@ -131,19 +132,42 @@ d = 3 :  [C] [A] [B]      <- same documents, different order
 d = 50:  [A] [X] [Y]      <- new documents arrive
 ```
 
-A condition that **has no reason to score differently** was included deliberately.
-It scored differently anyway.
+A condition whose **documents cannot differ** was included deliberately. It scored
+differently anyway.
 
 ```
-F1 difference between d = 3 and d = 0  =  +0.31
+F1 difference between d = 3 and d = 0  =  +0.31   (standard error 0.37)
 ```
 
-**Two conditions with identical prompt content differ by 0.31 points.** That is
-the size of the variation that arises **when nothing is changed** — the same way
-a person retaking one exam scores slightly differently.
+**Two conditions holding identical documents differ by 0.31 points.**
 
-> **That 0.31 is the scale this whole report is read on.** A treatment effect near
-> 0.31 is the size of the effect of changing nothing.
+**One thing must be stated precisely here.** `d` = 3 cannot change the documents,
+but it does change **their order** — and a language model can respond to the order
+in which the same documents are placed. That is exactly why Section 2.2 calls
+`d` = 3 the "reordering component". So this +0.31 **cannot be called pure noise.**
+It is **an ordering effect plus noise**, and therefore an **upper bound on the
+noise.**
+
+> **Being an upper bound is what makes the ruler safe.** The true noise is at most
+> 0.31. So the judgement *"a difference smaller than 0.31 cannot be called a
+> treatment effect"* holds either way.
+
+**And a separate comparison reaches the same conclusion whether ordering matters
+or not.** Measuring the treatments against **`d` = 3 as the baseline** instead of
+`d` = 0 puts the reordering into both arms, where it **cancels, leaving only the
+effect of the documents having changed**:
+
+```
+d =  7  −  d = 3   =   −0.24  ± 0.27
+d = 10  −  d = 3   =   +0.29  ± 0.25
+d = 25  −  d = 3   =   −0.20  ± 0.42
+d = 50  −  d = 3   =   −0.03  ± 0.45
+```
+
+All four lie **within twice their own standard error** and the signs disagree.
+This is the report's **least-assumption evidence** — the conclusion holds
+**without knowing** whether order affects the score. The "vs control" column in
+Section 3.3 makes the same comparison on the rounds axis.
 
 ### 2.4 Evaluation was held at `d` = 0 for every condition
 
@@ -286,8 +310,9 @@ baseline at 41 of 63 targets, and its 26 clear wins are the most of any conditio
 The four conditions that really did change documents managed 15 to 24, and are
 **all typically slower**.
 
-> When the arm that changes nothing wins most often, what the wins measure is the
-> **variation of the measurement**, not the effect of the treatment.
+> When the arm whose documents cannot improve wins most often, the wins are **not
+> the effect of better documents** — they are an ordering effect or the variation
+> of the measurement. Either way, they are not what raising the depth bought.
 
 ### 3.5 A second check that uses no interpolation
 
@@ -470,9 +495,12 @@ log spacing.
 | Bandwidth | 1 – 1,000 Mbps | a constrained link – a datacentre |
 | Query volume | 10³ – 10⁷ | a small pilot – a large deployment |
 
-**And this result does not depend on those ranges**, because, as below, the
-break-even bandwidth is zero regardless of query volume — any range gives the
-same conclusion.
+**And the sign does not depend on those ranges.** As below, changing the query
+volume ten-thousand-fold **does not change the sign** of the break-even bandwidth,
+because the numerator — the bytes saved — does not depend on query volume at all.
+At the four depths whose bytes saved are negative, `B*` is zero at every query
+volume; at `d` = 25, the only positive one, `B*` is positive but lies **below** the
+declared range. Either way, any range gives the same conclusion.
 
 ### Why query volume is an axis
 
@@ -487,9 +515,9 @@ The **bytes saved, by contrast, happen once during training**. So as queries
 accumulate the denominator grows while the numerator does not, and `B*` falls. A
 system serving many queries has a narrower window in which reranking pays.
 
-### Measured
+### Measured — `d` = 50
 
-| Query volume `Q` | Break-even bandwidth |
+| Query volume `Q` | Break-even bandwidth (`d` = 50) |
 |---|---|
 | 1,000 | **0 Mbps** |
 | 10,000 | 0 Mbps |
@@ -509,11 +537,37 @@ declared above.
 
 Normally this table reads *"at 1,000 queries it pays off below 1.85 Mbps, at a
 million below 0.002"*, narrowing the verdict to **a corner of very slow links and
-modest query volumes**. Here there is no corner — **no link is slow enough and no
-query volume small enough.**
+modest query volumes**. At `d` = 50 there is no corner at all — no link is slow
+enough. `d` = 3, 7 and 10 save negative bytes too, so all five rows are the same
+for them.
 
-> That the table is all zeros is itself the result. **There is no operating
-> region in which reranking buys back communication.**
+### `d` = 25 is not zero — and that matters more
+
+`d` = 25, the one positive exchange rate in Section 5 (+2.9 MB), produces a
+**non-zero `B*`** here. It is reported rather than hidden.
+
+| Query volume `Q` | `B*` (index held) | `B*` (index built) |
+|---|---|---|
+| 1,000 | 0.171 Mbps | 0.019 Mbps |
+| 10,000 | 0.017 Mbps | 0.010 Mbps |
+| 100,000 | 0.0017 Mbps | 0.0016 Mbps |
+| 1,000,000 | 0.00017 Mbps | 0.00017 Mbps |
+| 10,000,000 | 0.000017 Mbps | 0.000017 Mbps |
+
+**So a paying region does exist mathematically.** What settles the matter is where
+it sits. The most favourable cell is **0.171 Mbps**, one sixth of **1 Mbps**, the
+slowest link this report declares. At 100,000 queries it is **0.0017 Mbps** — one
+six-hundredth of 1 Mbps. Paying off would require a link **hundreds of times
+slower than the slowest one the experiment contemplates.**
+
+And that +2.9 MB itself comes from a condition that **loses at 39 of the 63
+targets** in Section 3.3. The same fact appears as 8 of Section 5's 10 exchange
+rates being negative, with both positive ones belonging to this `d` = 25.
+
+> So the exact conclusion is not "no region exists mathematically" but this. **At
+> four depths no link is slow enough; the remaining depth's paying region lies
+> below the declared bandwidth range, and that depth typically loses on the rounds
+> axis. It is not an operable region.**
 
 ---
 
@@ -630,8 +684,9 @@ reranking does not buy back communication"*. The conditions are stated.
 | **The model is small** | one model, SmolLM2-135M. A model this size may lack the capacity to exploit better documents |
 | **Four seeds** | the measurement moves by ±0.16 to ±0.47 points. Resolving a 0.3-point effect would take sixteen seeds — 64 runs, 90 hours |
 | **The curves have not converged** | the budget was fixed at 59 rounds, and most curves peak at round 50 or later |
-| **Six depths** | 5, 20 and 30 were not measured: every observed effect sits inside the 0.31-point variation the control sets, and a finer ladder cannot read a quantity below the smallest division |
-| **An assumed device speed** | break-even bandwidth scales with it, but since the bytes saved are negative no value changes the sign |
+| **Six depths** | 5, 20 and 30 were not measured: every observed effect sits inside the 0.31-point **upper bound** the control sets, and a finer ladder cannot read a quantity below the smallest division |
+| **The control reorders** | `d` = 3 cannot change the documents but does change their order, so its +0.31 is an **upper bound on the noise**, not pure noise. Isolating the ordering effect would need a condition that runs **the same three documents in several orders**, which was not measured. The conclusion does not rest on this, because it also holds for the comparison against `d` = 3 as baseline (Section 2.3) |
+| **An assumed device speed** | break-even bandwidth **scales** with it. Being only a constant of proportionality, it cannot change the sign — the four depths with negative bytes saved stay at zero for any device speed. But `d` = 25's `B*` scales with it, so a faster device could lift that region into the declared range — about **6×** faster at 1,000 queries, about **600×** at 100,000 (Section 6) |
 
 **The apparatus itself worked.** New-document share rose monotonically from 0 to
 52.5 %, the control held at 0, all 24 runs spent an identical 1.74 GB, and the
