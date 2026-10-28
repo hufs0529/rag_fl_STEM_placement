@@ -1,0 +1,30 @@
+{
+  "title": "Buying back communication with retrieval compute in federated fine-tuning: code and experiment logs",
+  "upload_type": "software",
+  "access_right": "open",
+  "license": "Apache-2.0",
+  "creators": [
+    {
+      "name": "Kim, Jeonghun",
+      "affiliation": "Macquarie University",
+      "orcid": "0009-0002-3486-5590"
+    }
+  ],
+  "description": "<p>Code, experiment logs and analysis scripts for a six-week STEM research placement (16 September – 28 October 2026) testing whether client-side retrieval compute can buy back communication in federated LLM fine-tuning.</p><p><strong>Design.</strong> 24 federated runs of SmolLM2-135M with LoRA adapters on Natural Questions, under an identical communication budget of 1.74 GB, varying only cross-encoder reranking depth d over six levels (0, 3, 7, 10, 25, 50) with four seeds. d = 3 is an ordering control that cannot change which documents appear. Evaluation was held at d = 0 for every condition so that serving-time gains could not be mistaken for training-time gains.</p><p><strong>Result.</strong> The treatment took effect — the share of prompt passages dense retrieval would not have selected rose from 0 % to 52.5 % — but learning did not follow. Rounds-to-target was measured at 63 thresholds derived from the baseline curves rather than at one chosen value; no depth resolved a saving at more than 5 of the 63, and the largest median saving belonged to the ordering control. Eight of ten exchange rates (bytes saved per FLOP) were negative, and both positive ones belonged to the control. Mean client-update divergence moved by 0.77 % while treatment strength rose from 0 to 0.72, locating the break at the link &quot;better documents produce better learning&quot;.</p><p><strong>Scope.</strong> With four seeds a paired permutation test cannot reach p &lt; 0.05 at all (floor 0.125), and the cost model charges reranking's deployment cost while crediting its deployment benefit at zero. The finding is that the fewer-rounds path alone cannot buy back the reranking compute at this model scale, not that reranking is uneconomic.</p><p><strong>Contents.</strong> src/ and tests/ (333 tests); results/logs/ with 24 per-round JSONL run logs and summaries, pilot-gate artefacts, frozen corpus and retrieval caches, and the analysis artefact; scripts/; configs/; docs/ with the final report, research records and six weekly reports; results/figures/; MANIFEST.sha256 for integrity verification. Per-round model checkpoints are excluded as derived. The base model and source datasets are fetched from the Hugging Face Hub at run time and are not redistributed.</p><p><strong>Licensing.</strong> Source code, scripts and tests are Apache-2.0. Experiment logs under results/logs/ are CC BY-SA 4.0, because generated text in them reproduces material derived from a CC BY-SA source corpus.</p>",
+  "keywords": [
+    "federated learning",
+    "parameter-efficient fine-tuning",
+    "retrieval-augmented generation",
+    "reranking",
+    "communication efficiency",
+    "large language models"
+  ],
+  "related_identifiers": [
+    {
+      "identifier": "https://github.com/hufs0529/rag-fl",
+      "relation": "isSupplementTo",
+      "scheme": "url"
+    }
+  ],
+  "language": "eng"
+}

@@ -153,20 +153,42 @@ def plot_break_even(report, path):
 
 
 def plot_mechanism(report, path):
-    rows = report["mechanism"]["rows"]
-    fig, ax = plt.subplots(figsize=(6.5, 4.2))
-    ax2 = ax.twinx()
-    depths = [str(r["depth"]) for r in rows]
-    recall = [r["gold_recall_at_3"] for r in rows]
-    divergence = [r["divergence"] for r in rows]
+    """처리 강도와 발산을 **두 패널**로 나란히 둔다.
 
-    ax.bar(depths, [v if v is not None else 0 for v in recall], alpha=0.6,
-           color="#1f77b4", label="retrieval quality proxy")
-    ax2.plot(depths, divergence, marker="o", color="#d62728", label="client-update divergence")
-    ax.set_xlabel("reranking depth d")
-    ax.set_ylabel("rank-change rate (treatment strength)", color="#1f77b4")
-    ax2.set_ylabel("mean client-update divergence", color="#d62728")
-    ax.set_title(f"Mechanism check: {report['mechanism']['verdict']}")
+    이중축으로 그리면 안 된다. 이 그림의 요점은 "왼쪽은 크게 움직이고 오른쪽은
+    거의 움직이지 않는다" 인데, 발산을 자기 범위(1.313~1.322)에 맞춰 늘리면
+    0.77 % 변화가 급락처럼 보여 **본문과 정반대로 읽힌다.** 그래서 두 패널로
+    쪼개고, 발산 축은 0 에서 시작해 실제 크기를 보이게 한다. 진짜 범위는
+    확대 상자로 따로 보여 준다 - 숨기지 않되 주축을 왜곡하지 않는다.
+    """
+    rows = report["mechanism"]["rows"]
+    depths = [str(r["depth"]) for r in rows]
+    strength = [r["gold_recall_at_3"] or 0.0 for r in rows]
+    divergence = [r["divergence"] for r in rows]
+    lo, hi = min(divergence), max(divergence)
+    span = (hi - lo) / hi * 100
+
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10.5, 4.2))
+
+    ax1.bar(depths, strength, color="#2E86C1", alpha=0.85)
+    ax1.set_xlabel("reranking depth d")
+    ax1.set_ylabel("rank-change rate")
+    ax1.set_ylim(0, 0.8)
+    ax1.set_title("Treatment strength rose")
+    ax1.grid(axis="y", alpha=0.3)
+
+    # 0 에서 시작하는 축. 변화가 눈에 안 보이는 것이 결과다.
+    ax2.plot(depths, divergence, marker="o", color="#C1562B", linewidth=2)
+    ax2.set_xlabel("reranking depth d")
+    ax2.set_ylabel("mean client-update divergence")
+    ax2.set_ylim(0, max(1.4, hi * 1.08))
+    ax2.set_title(f"Divergence did not ({span:.2f} % span)")
+    ax2.grid(axis="y", alpha=0.3)
+    ax2.annotate(f"full range {lo:.4f} - {hi:.4f}",
+                 xy=(0.5, 0.12), xycoords="axes fraction", ha="center",
+                 fontsize=9, color="#4A5568")
+
+    fig.suptitle(f"Mechanism check: {report['mechanism']['verdict']}", y=0.99)
     fig.tight_layout()
     fig.savefig(path, dpi=160)
     plt.close(fig)

@@ -1,0 +1,32 @@
+Experiment logs: Creative Commons Attribution-ShareAlike 4.0 International
+=========================================================================
+
+This file covers the experiment logs and generated outputs under
+`results/logs/`. Everything else in this repository — source code under
+`src/`, tests under `tests/`, scripts under `scripts/` and configuration
+under `configs/` — is licensed under Apache-2.0; see LICENSE.
+
+Why these files carry a different licence
+-----------------------------------------
+The per-round logs record model generations produced while training on
+questions from Natural Questions (`google-research-datasets/nq_open`) with
+passages from a mirror of the DPR Wikipedia split
+(`kenhktsui/wiki_dpr_e5`). Both sources derive from Wikipedia and are
+distributed under CC BY-SA 3.0. Generated text in the logs therefore
+reproduces material derived from a ShareAlike corpus, and the logs are
+released under CC BY-SA 4.0 so that the obligation travels with them.
+
+Neither the base model nor the source corpora are redistributed here. They
+are fetched from the Hugging Face Hub at run time; their identifiers and the
+exact column projection used are recorded in
+`configs/experiment_config.yaml`.
+
+Licence text
+------------
+https://creativecommons.org/licenses/by-sa/4.0/legalcode
+
+Attribution
+-----------
+Jeonghun Kim (2026), "Buying back communication with retrieval compute in
+federated fine-tuning: code and experiment logs", Macquarie University.
+https://github.com/hufs0529/rag-fl

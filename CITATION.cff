@@ -1,0 +1,36 @@
+cff-version: 1.2.0
+title: >-
+  Buying back communication with retrieval compute in federated
+  fine-tuning: code and experiment logs
+message: >-
+  If you use this software or its experiment logs, please cite it
+  using the metadata below.
+type: software
+authors:
+  - family-names: Kim
+    given-names: Jeonghun
+    orcid: "https://orcid.org/0009-0002-3486-5590"
+    affiliation: Macquarie University
+repository-code: "https://github.com/hufs0529/rag-fl"
+abstract: >-
+  Code, experiment logs and analysis scripts for a six-week STEM
+  research placement testing whether client-side retrieval compute
+  can buy back communication in federated LLM fine-tuning. Twenty-four
+  federated runs of SmolLM2-135M with LoRA adapters on Natural
+  Questions were trained under an identical 1.74 GB communication
+  budget, varying only cross-encoder reranking depth over six levels
+  with four seeds. Reranking depth demonstrably changed which
+  documents reached the prompt but did not reduce rounds to target;
+  the break is located at the link between document quality and
+  learning.
+keywords:
+  - federated learning
+  - parameter-efficient fine-tuning
+  - retrieval-augmented generation
+  - reranking
+  - communication efficiency
+  - large language models
+license: Apache-2.0
+# DOI 는 Zenodo 가 배포를 받아들인 **뒤에** 발급된다. 첫 릴리스가 끝나면
+# 그 DOI 를 아래에 적고 커밋할 것 - 지금 임의의 값을 적으면 잘못된 인용이 박힌다.
+# doi: 10.5281/zenodo.XXXXXXXX

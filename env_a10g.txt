@@ -1,0 +1,25 @@
+PyYAML==6.0.3
+accelerate==1.15.0
+datasets==5.0.1
+flwr==1.39.0
+matplotlib==3.11.2
+numpy==2.4.6
+pandas==3.0.6
+peft==0.21.1
+pyarrow==25.0.1
+pytest==9.1.1
+python-docx==1.2.0
+qdrant-client==1.19.1
+rank-bm25==0.2.2
+reportlab==5.1.0
+scikit-learn==1.9.1
+scipy==1.17.1
+sentence-transformers==6.1.0
+torch==2.14.0
+tqdm==4.70.1
+transformers==5.17.0
+
+# --- runtime ---
+# python 3.11.15 on Linux 6.18.33.2-microsoft-standard-WSL2
+# torch 2.14.0+cu130 | cuda available: False
+# gpu: not present on this host (training ran on NVIDIA A10G)
