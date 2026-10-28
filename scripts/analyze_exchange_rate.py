@@ -28,7 +28,7 @@ from src.analysis.cost_model import (
 )
 from src.analysis.curves import (
     attainable_range, curve_mean, final_scores, local_slope, matched_budget_table,
-    rounds_by_depth, tau_grid,
+    paired_saving, permutation_floor_p, rounds_by_depth, t_critical_95, tau_grid,
 )
 from src.analysis.diagnostics import (
     assess_mechanism, mean_divergence, mechanism_table, sweep_summary,
@@ -86,8 +86,15 @@ def main() -> int:
         per_depth = rounds_by_depth(curves_by_depth, tau, metric)
         baseline_rounds = per_depth[baseline_depth]["mean"]
         entry = {"tau": tau, "baseline_rounds": baseline_rounds, "depths": {}}
+        base_per_seed = per_depth[baseline_depth]["per_seed"]
         for depth, stats in per_depth.items():
             saved = saved_bytes(baseline_rounds, stats["mean"], num_clients, payload)
+            # 절약의 불확실성은 **차이 자신의** 표준오차다. 시드마다 라운드 수가
+            # 통째로 오르내리므로 같은 시드에서 빼면 그 성분이 상쇄된다 - 실측으로
+            # 비대응 0.879 라운드 대 대응 0.16~0.47 로 분해능이 2~5 배 좋아진다.
+            # threshold 는 n=4 의 양측 95 % 값(t=3.182)을 곱한 것이고, 예전의
+            # "표준오차보다 크면" 규칙은 이보다 3 배 관대했다.
+            pair = paired_saving(base_per_seed, stats["per_seed"])
             entry["depths"][str(depth)] = {
                 "rounds_mean": stats["mean"],
                 "rounds_stderr": stats["stderr"],
@@ -97,6 +104,11 @@ def main() -> int:
                     None if stats["mean"] is None or baseline_rounds is None
                     else baseline_rounds - stats["mean"]
                 ),
+                "rounds_saved_paired_mean": pair["mean"],
+                "rounds_saved_stderr": pair["stderr"],
+                "rounds_saved_t_critical": pair["t_critical"],
+                "rounds_saved_threshold": pair["threshold"],
+                "rounds_saved_resolved": pair["resolved"],
                 "saved_bytes": saved,
                 "saved_mb": None if saved is None else saved / 1e6,
             }
@@ -116,20 +128,30 @@ def main() -> int:
         flops_source = {"rerank": "analytic", "embed": "analytic"}
         print(f"  {flops_path} not found; using analytic FLOPs estimates")
 
-    # 대표 tau: baseline 이 도달한 구간의 중앙값. 결론 자체는 스윕 전체로 보고하고,
-    # 이 지점은 표 하나로 요약하기 위한 예시일 뿐이다.
+    # 대표 tau 는 더 이상 환율의 분자가 아니다. 예전에는 이 한 점의 절약
+    # 바이트를 썼고, 그래서 5 절의 표가 3.3 절과 **부호가 반대**로 나왔다
+    # (d=3 은 중앙값 +0.149 인데 이 점에서 -0.605, d=25 는 중앙값 -0.113 인데
+    # 이 점에서 +0.099). 두 표가 다른 통계를 쓰면 독자가 모순을 발견한다.
+    # 이제 분자도 **63 점 전체의 중앙값**이다 - 3.3 절과 같은 통계다.
     midpoint = sweep[len(sweep) // 2]
+    sweep_by_depth = sweep_summary(sweep, baseline_depth)
+    bytes_per_round = num_clients * payload * 2
     throughput = float(cfg.cost.device_throughput_flops)
     # 환율을 적을 질문 수. 스윕의 가운데 값을 쓰되 **기록으로 남긴다** - 예전에는
     # query_volume_sweep[2] 라고만 적혀 있어, 스윕 길이를 바꾸면 "가운데" 가 조용히
     # 옮겨 가고 산출물 어디에도 어느 Q 에서 잰 값인지가 없었다.
     volumes = sorted(float(q) for q in cfg.cost.query_volume_sweep)
     rate_query_volume = volumes[len(volumes) // 2] if volumes else 1.0
+    # 실험이 **실제로** 재순위한 질문 수. 이 값이 없으면 보고서는 "queries" 라는
+    # 정의 없는 기호 하나로 결론을 끌고 가게 된다 - 그런데 이건 쟀을 수 있는
+    # 값이다. 게이트 3 이 고정한 questions_per_client x 클라이언트 수다.
+    measured_query_volume = _measured_query_volume(log_dir, num_clients)
     surfaces, rates = {}, {}
     for depth in sorted(curves_by_depth):
         if depth == baseline_depth:
             continue
-        saved = midpoint["depths"][str(depth)]["saved_bytes"]
+        median_rounds = (sweep_by_depth.get(depth) or {}).get("median_rounds_saved")
+        saved = None if median_rounds is None else median_rounds * bytes_per_round
         for amortise in (True, False):
             cost = depth_cost(depth, rate_query_volume,
                               cfg.data.corpus_size, flops_per_pair, flops_per_passage, amortise)
@@ -145,6 +167,17 @@ def main() -> int:
                 "query_volume": rate_query_volume,
                 **cost,
             }
+            if measured_query_volume:
+                measured_cost = depth_cost(depth, measured_query_volume,
+                                           cfg.data.corpus_size, flops_per_pair,
+                                           flops_per_passage, amortise)
+                rates[key]["at_measured_query_volume"] = {
+                    "query_volume": measured_query_volume,
+                    "total_flops": measured_cost["total_flops"],
+                    "bytes_per_flop": exchange_rate(saved, measured_cost["total_flops"]),
+                    "break_even_bandwidth_mbps": break_even_bandwidth_mbps(
+                        saved, measured_cost["total_flops"], throughput),
+                }
             surfaces[key] = break_even_surface(
                 saved, depth,
                 cfg.cost.bandwidth_sweep_mbps, cfg.cost.query_volume_sweep,
@@ -184,7 +217,6 @@ def main() -> int:
         depth: midpoint["depths"][str(depth)].get("rounds_stderr") for depth in curves_by_depth
     }
     # tau 전구간 요약. 기전 판정은 한 점이 아니라 이 요약을 본다.
-    sweep_by_depth = sweep_summary(sweep, baseline_depth)
     rounds_saved_median = {
         depth: (sweep_by_depth.get(depth) or {}).get("median_rounds_saved")
         for depth in curves_by_depth
@@ -252,6 +284,19 @@ def main() -> int:
         },
         "exchange_rates": rates,
         "exchange_rate_query_volume": rate_query_volume,
+        "measured_query_volume": measured_query_volume,
+        "exchange_rate_basis": "median rounds saved over the whole tau sweep",
+        # 이 설계가 **낼 수 있는 가장 작은** p. 대응 치환은 n 개 차이의 부호를
+        # 뒤집는 것뿐이라 배열이 2^n 가지다. n=4 면 최소 양측 p = 0.125 이고,
+        # 데이터가 아무리 깨끗해도 p<0.05 가 **구조적으로 불가능**하다.
+        # within_noise 판정이 변명이 아닌 이유가 이 한 줄이다.
+        "resolution_limit": {
+            "seeds": len(cfg.treatment.seeds),
+            "t_critical_95": t_critical_95(len(cfg.treatment.seeds) - 1),
+            "permutation_floor_p": permutation_floor_p(len(cfg.treatment.seeds)),
+            "seeds_needed_for_p_below_0.05": next(
+                (n for n in range(2, 33) if (permutation_floor_p(n) or 1) < 0.05), None),
+        },
         "break_even_surfaces": surfaces,
         "mechanism": {**table, **mechanism},
         "sweep_summary": {str(d): v for d, v in sweep_by_depth.items()},
@@ -335,6 +380,25 @@ def main() -> int:
     print(f"\n  verdict: {mechanism['verdict']} - {mechanism['note']}")
     print(f"\n  wrote {log_dir / 'analysis' / 'exchange_rate.json'}")
     return 0
+
+
+def _measured_query_volume(log_dir: Path, num_clients: int):
+    """실험이 실제로 재순위한 고유 질문 수.
+
+    게이트 3 이 고정한 questions_per_client 와 클라이언트 수의 곱이다. 재순위
+    점수는 2 주차에 캐시로 얼렸으므로 질문당 **한 번**만 수행되었다 - 배포
+    모델(질문마다 매번)과는 다른 회계이고, 그래서 둘을 나란히 보고한다.
+
+    없으면 None 을 돌려주고 보고서는 선언 스윕만 쓴다. 조용히 추정치를 넣는
+    것보다 비어 있는 편이 낫다.
+    """
+    path = log_dir / "gates" / "calibrated_schedule.json"
+    if not path.exists():
+        return None
+    per_client = (load_json(path).get("scale") or {}).get("questions_per_client")
+    if not per_client or not num_clients:
+        return None
+    return float(per_client) * float(num_clients)
 
 
 def _fmt(value) -> str:

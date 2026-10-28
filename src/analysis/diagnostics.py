@@ -20,6 +20,8 @@ from typing import Dict, List, Optional, Sequence
 
 import numpy as np
 
+from src.analysis.curves import t_critical_95
+
 
 def pearson(xs: Sequence[float], ys: Sequence[float]) -> Optional[float]:
     pairs = [(x, y) for x, y in zip(xs, ys) if x is not None and y is not None]
@@ -53,7 +55,8 @@ def sweep_summary(sweep: Sequence[Dict], baseline_depth: int = 0) -> Dict[int, D
     왜 한 점이 아닌가: representative tau 하나를 고르면 결론이 그 선택의 산물이
     된다. 실측으로 tau=25.02 에서는 d=25 만 양수(+0.10)였지만, 63 점 전체에서는
     중앙값이 -0.113 이고 양수인 tau 는 24/63 뿐이다. 한 점은 오히려 그 depth 를
-    실제보다 좋게 보이게 했다.
+    실제보다 좋게 보이게 했다. 환율 표(5 절)도 같은 이유로 중앙값을 쓴다 - 예전에는
+    그 표만 대표 tau 한 점이어서 d=3 과 d=25 의 부호가 3.3 절 표와 **반대로** 나왔다.
 
     왜 구간을 자르지 않는가: tau 상단에서는 기준선 곡선이 평평해져(tau 25.02 에서
     9.0 라운드였던 것이 28.14 에서 38.7 라운드) 작은 F1 차이가 큰 라운드 차이로
@@ -70,11 +73,20 @@ def sweep_summary(sweep: Sequence[Dict], baseline_depth: int = 0) -> Dict[int, D
             if not cell or cell.get("rounds_saved") is None:
                 continue
             value = cell["rounds_saved"]
-            stderr = cell.get("rounds_stderr")
+            # 분해능은 **차이 자신의** 95 % 문턱이다. 예전에는 depth 의 표준오차
+            # 하나와 1 시그마로 비교했는데 둘 다 틀렸다: (1) 비교해야 할 것은
+            # 차이의 표준오차이고, 시드로 짝지으면 2~5 배 좁다, (2) n=4 의 양측
+            # 95 % 임계값은 1 도 2 도 아니라 3.182 다. 느슨한 쪽으로 틀려서
+            # d=10 의 +0.60 +- 0.28 이 "유의" 로 읽혔다 (올바른 검정에서 p=0.127).
+            threshold = cell.get("rounds_saved_threshold")
+            if threshold is None:                   # 대응 통계가 없는 옛 산출물
+                stderr = cell.get("rounds_saved_stderr") or cell.get("rounds_stderr")
+                t_crit = t_critical_95((cell.get("seeds_reaching_tau") or 1) - 1)
+                threshold = None if stderr is None else t_crit * stderr
             saved.append(value)
             if value > 0:
                 positive += 1
-                if stderr is not None and value > stderr:
+                if threshold is not None and value > threshold:
                     resolved += 1
         n = len(saved)
         out[depth] = {

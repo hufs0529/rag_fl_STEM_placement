@@ -167,3 +167,46 @@ def test_every_configured_depth_has_a_plot_colour():
     assert len(set(assigned)) == len(assigned), f"색이 중복됐다: {assigned}"
     with pytest.raises(KeyError):
         mod._colour(999)
+
+
+def test_the_exchange_rate_uses_the_whole_sweep_not_one_target(analysis_workspace):
+    """환율의 분자도 tau 전구간 중앙값이어야 한다.
+
+    예전에는 5 절의 환율 표만 대표 tau 한 점의 절약 바이트를 썼고, 3.3 절의
+    표는 63 점 중앙값을 썼다. 그래서 같은 보고서 안에서 **부호가 반대**로
+    나왔다 - d=3 은 중앙값 +0.149 인데 그 한 점에서 -0.605, d=25 는 중앙값
+    -0.113 인데 그 한 점에서 +0.099 였다. 두 표를 나란히 본 독자가 모순을
+    발견한다. 분자를 같은 통계로 묶어 그 모순을 없앤다.
+    """
+    tmp_path, log_dir = analysis_workspace
+    assert _run("analyze_exchange_rate.py", tmp_path, log_dir).returncode == 0
+    report = json.loads((log_dir / "analysis" / "exchange_rate.json").read_text())
+
+    assert "median" in report["exchange_rate_basis"]
+    bytes_per_round = report["num_clients"] * report["payload_bytes_per_client_per_direction"] * 2
+    for key, rate in report["exchange_rates"].items():
+        depth = key.split("_")[0].lstrip("d")
+        median_rounds = report["sweep_summary"][depth]["median_rounds_saved"]
+        assert rate["saved_bytes"] == pytest.approx(median_rounds * bytes_per_round)
+        # 부호가 3.3 절의 중앙값과 반드시 같다
+        assert (rate["saved_bytes"] > 0) == (median_rounds > 0)
+
+
+def test_the_report_records_what_this_design_can_and_cannot_resolve(analysis_workspace):
+    """시드 4 개로는 p<0.05 가 구조적으로 불가능하다는 사실을 산출물에 남긴다.
+
+    이 숫자가 없으면 within_noise 판정이 "효과를 못 찾았다" 는 변명으로 읽힌다.
+    있으면 "이 설계는 어떤 효과도 유의하게 만들 수 없다, 시드 6 개부터
+    가능하다" 는 정량적 진술이 된다.
+    """
+    tmp_path, log_dir = analysis_workspace
+    assert _run("analyze_exchange_rate.py", tmp_path, log_dir).returncode == 0
+    report = json.loads((log_dir / "analysis" / "exchange_rate.json").read_text())
+
+    limit = report["resolution_limit"]
+    assert limit["t_critical_95"] > 2.0          # "표준오차의 2 배" 가 아니다
+    floor = limit["permutation_floor_p"]
+    needed = limit["seeds_needed_for_p_below_0.05"]
+    if limit["seeds"] <= 4:
+        assert floor >= 0.05                     # 이 설계로는 도달 불가
+        assert needed > limit["seeds"]

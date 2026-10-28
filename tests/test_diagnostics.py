@@ -100,12 +100,21 @@ def test_early_rounds_can_be_isolated():
     assert mean_divergence(records, first_n_rounds=10) == 0.2
 
 
-def _sweep(saved_by_depth_per_tau, stderr=0.5):
-    """tau 격자를 흉내낸다: {depth: [tau 마다의 절약]}."""
+def _sweep(saved_by_depth_per_tau, stderr=0.5, seeds=4):
+    """tau 격자를 흉내낸다: {depth: [tau 마다의 절약]}.
+
+    stderr 는 **차이 자신의** 표준오차이고, 분해능 문턱은 t(0.975, seeds-1) 를
+    곱한 값이다. seeds=4 면 3.182 x 0.5 = 1.591 이므로, 아래 테스트들의 3.0 은
+    문턱을 넘고 2.0 도 넘지만 1.0 은 넘지 못한다. 예전 픽스처는 1 시그마로 비교해
+    0.6 같은 값도 "분해됨" 으로 셌다.
+    """
     n = len(next(iter(saved_by_depth_per_tau.values())))
     return [
         {"tau": 20.0 + i,
-         "depths": {str(d): {"rounds_saved": vals[i], "rounds_stderr": stderr}
+         "depths": {str(d): {"rounds_saved": vals[i],
+                             "rounds_stderr": stderr,
+                             "rounds_saved_stderr": stderr,
+                             "seeds_reaching_tau": seeds}
                     for d, vals in saved_by_depth_per_tau.items()}}
         for i in range(n)
     ]

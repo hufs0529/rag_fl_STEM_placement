@@ -33,12 +33,16 @@ identified.
 the documents** — it reorders the three already chosen. Yet it scored higher and
 saved rounds more often than every condition that really did change documents.
 **When the arm whose documents cannot improve wins, the wins are not the effect of
-better documents.** Section 2.3 re-measures the treatments against this control as
-the baseline, removing any ordering effect, and reaches the same conclusion.
+better documents.** Section 2.3.1 computes the treatments against **both**
+`d` = 0 and `d` = 3 as baselines and finds all nine contrasts non-significant.
 
-**This is not a failed experiment.** The conclusion is not *"reranking is
-useless"* but *"at this model scale and this budget, reranking does not buy back
-communication"* — and showing **where the chain breaks** is the contribution.
+**The scope of the conclusion.** It is not *"reranking is useless"*. Precisely, it
+is **"at this model scale and this budget, the fewer-rounds path alone cannot buy
+back the reranking compute"**. Two things must be read with it — (i) this report's
+cost accounting charges reranking's deployment **cost** but credits its deployment
+**benefit** (serving accuracy) as zero (Section 2.4), and (ii) with four seeds
+`p` < 0.05 is structurally unreachable (Section 7.5). Showing **where the chain
+breaks** is the contribution.
 
 ---
 
@@ -139,35 +143,66 @@ differently anyway.
 F1 difference between d = 3 and d = 0  =  +0.31   (standard error 0.37)
 ```
 
-**Two conditions holding identical documents differ by 0.31 points.**
+**But that +0.31 is itself indistinguishable from zero.** Its standard error,
+0.37, is larger than the value, and `p` = 0.46. The 95 % interval is
+**[−0.87, +1.49]** — the true value could be 0, or it could be 1.5.
 
-**One thing must be stated precisely here.** `d` = 3 cannot change the documents,
-but it does change **their order** — and a language model can respond to the order
-in which the same documents are placed. That is exactly why Section 2.2 calls
-`d` = 3 the "reordering component". So this +0.31 **cannot be called pure noise.**
-It is **an ordering effect plus noise**, and therefore an **upper bound on the
-noise.**
+> **So this 0.31 is not used as a ruler for "the size of the noise".** A quantity
+> that cannot be told apart from zero cannot calibrate another one. On a scale:
+> an empty envelope reads 0.31 g, but the needle wanders by ±0.37 g on its own.
+> What has been learnt is not the envelope's weight but **the needle's wander.**
 
-> **Being an upper bound is what makes the ruler safe.** The true noise is at most
-> 0.31. So the judgement *"a difference smaller than 0.31 cannot be called a
-> treatment effect"* holds either way.
+**What `d` = 3 does tell us is something else.** It cannot change the documents
+but it does change **their order** — which is why Section 2.2 calls it the
+"reordering component" — and a language model can respond to the order in which
+the same documents sit (Liu et al., *Lost in the Middle*, TACL 2024). So
++0.31 ± 0.37 is **an estimate of the ordering effect**, and that estimate is
+indistinguishable from zero. One reading follows: **at this resolution the
+ordering effect is not resolved either.**
 
-**And a separate comparison reaches the same conclusion whether ordering matters
-or not.** Measuring the treatments against **`d` = 3 as the baseline** instead of
-`d` = 0 puts the reordering into both arms, where it **cancels, leaving only the
-effect of the documents having changed**:
+(The **sign** of the ordering effect cannot be fixed from this data, which is why
++0.31 is not called an "upper bound on the noise" — had ordering cost points, the
+sampling error would have been **larger** than 0.31, and there is no way to tell
+which happened.)
+
+### 2.3.1 So what is the ruler? Each comparison's own standard error
+
+**Resolution is a comparison's own standard error, not another comparison's point
+estimate.** Pairing by seed cancels the component that moves a whole run's round
+count up or down (0.879 rounds unpaired against 0.16 – 0.47 paired — the same data
+resolves 2 to 5 times finer).
+
+**And the critical value is not two.** Four seeds give 3 degrees of freedom, and
+the two-tailed 95 % value is **`t` = 3.182**. An earlier draft of this report used
+"twice the standard error", a rule 1.6 times too lenient.
 
 ```
-d =  7  −  d = 3   =   −0.24  ± 0.27
-d = 10  −  d = 3   =   +0.29  ± 0.25
-d = 25  −  d = 3   =   −0.20  ± 0.42
-d = 50  −  d = 3   =   −0.03  ± 0.45
+decision threshold  =  3.182 × (that comparison's standard error)  =  0.52 – 1.48 points
+largest difference observed                                        =  0.60 points
 ```
 
-All four lie **within twice their own standard error** and the signs disagree.
-This is the report's **least-assumption evidence** — the conclusion holds
-**without knowing** whether order affects the score. The "vs control" column in
-Section 3.3 makes the same comparison on the rounds axis.
+**So whichever baseline is used, no contrast clears its threshold** (paired
+*t*-tests):
+
+| Treatment | vs `d` = 0 | vs `d` = 3 |
+|---|---|---|
+| `d` = 7 | +0.07 ± 0.16 (`p` = .685) | −0.24 ± 0.27 (`p` = .442) |
+| `d` = 10 | +0.60 ± 0.28 (`p` = .127) | +0.29 ± 0.25 (`p` = .329) |
+| `d` = 25 | +0.11 ± 0.47 (`p` = .825) | −0.20 ± 0.42 (`p` = .667) |
+| `d` = 50 | +0.28 ± 0.31 (`p` = .437) | −0.03 ± 0.45 (`p` = .947) |
+
+**This table steps around the ordering argument rather than settling it.** It does
+**not claim** that using `d` = 3 as the baseline makes the ordering effect cancel —
+that cancellation would require order and content not to interact, and the
+positional effects *Lost in the Middle* reports depend on **which** document sits
+**where**, so there is no reason for the assumption to hold. Instead both
+baselines are computed and **neither resolves anything.** A check, not an
+assumption.
+
+> **And `d` = 10's +0.60 is why this was rewritten.** Under the old rule
+> (2 × standard error = 0.56) that value read as **"significant"**. The correct
+> threshold is 0.91 and `p` = 0.127. The direction of the conclusion did not
+> change, but the rule was wrong.
 
 ### 2.4 Evaluation was held at `d` = 0 for every condition
 
@@ -194,8 +229,18 @@ manufactured the conclusion that reranking reduces communication**, while nothin
 had been reduced.
 
 **The cost, and where it goes.** The scores reported here are lower than a
-deployed system would show. That is deliberate. The serving gain is not discarded
-either — the cost model in Section 4 **prices it as compute per query**.
+deployed system would show. That is deliberate.
+
+**One thing must be stated plainly, though: the serving gain is not on the
+books.** Sections 5 and 6 charge reranking's deployment **cost** (compute per
+query) but set its deployment **benefit** (better answers) to zero, because this
+experiment did not measure it.
+
+> **So this report's accounting is one-sided, and it is biased against
+> reranking.** Section 6 sizes that bias and Section 9 records it as a limitation.
+> The conclusion has to be read with it: what this report can say is **"the
+> fewer-rounds path alone cannot buy the compute back"**, and **not** "reranking
+> is uneconomic".
 
 ---
 
@@ -286,16 +331,21 @@ section was chosen by hand.**
 
 Each of the 63 targets was scored win or loss, and the wins counted.
 
-| `d` | Targets beaten | Of those, beyond the error | Typical (median) |
+| `d` | Targets beaten | Of those, **past the threshold** | Typical (median) |
 |---|---|---|---|
-| **3** *(control)* | **41 / 63** | **26 / 63** | **0.15 rounds faster** |
-| 7 | 19 / 63 | 10 / 63 | 0.56 rounds slower |
-| 10 | 20 / 63 | 16 / 63 | 0.21 rounds slower |
-| 25 | 24 / 63 | 9 / 63 | 0.11 rounds slower |
-| 50 | 15 / 63 | 7 / 63 | 0.37 rounds slower |
+| **3** *(control)* | **41 / 63** | **5 / 63** | **0.15 rounds faster** |
+| 7 | 19 / 63 | 0 / 63 | 0.56 rounds slower |
+| 10 | 20 / 63 | 1 / 63 | 0.21 rounds slower |
+| 25 | 24 / 63 | 1 / 63 | 0.11 rounds slower |
+| 50 | 15 / 63 | 5 / 63 | 0.37 rounds slower |
 
-**"Beyond the error"** — with four seeds the measurement itself moves by ±0.2 to
-±0.9 rounds. A margin smaller than that is not a win.
+**"Past the threshold"** — the decision threshold of Section 2.3.1, that is **the
+difference's own standard error × 3.182**. Four seeds give 3 degrees of freedom,
+whose two-tailed 95 % value is 3.182.
+
+An earlier draft counted this column at **one** standard error and printed
+26 / 10 / 16 / 9 / 7. That rule was counting margins that cannot be called clear
+wins. At the correct threshold **no condition passes more than 5 of the 63.**
 
 **"Typical"** is the **middle value** of the 63, not the mean. As the target rises
 the curve flattens — 9 rounds at 25.02, 38.7 at 28.14 — so a small score
@@ -306,9 +356,15 @@ instead the figures are read with a statistic extremes cannot move.
 ### 3.4 What the table says
 
 **The control comes first.** `d` = 3 cannot change the documents, yet it beat the
-baseline at 41 of 63 targets, and its 26 clear wins are the most of any condition.
-The four conditions that really did change documents managed 15 to 24, and are
-**all typically slower**.
+baseline at 41 of 63 targets. The four conditions that really did change documents
+managed 15 to 24, and are **all typically slower**.
+
+**With no effect at all the win rate should sit near 50 %, about 31 of 63.** Only
+the control is above that (41); the four arms that changed documents are **all
+below** it (15 – 24).
+
+**And no condition passes the threshold at a majority of targets** — the most is
+5 of 63. The distribution of wins is itself indistinguishable from a coin flip.
 
 > When the arm whose documents cannot improve wins most often, the wins are **not
 > the effect of better documents** — they are an ordering effect or the variation
@@ -378,8 +434,49 @@ Cost has two terms.
 
 ```
 one-off     indexing   = embed the whole corpus, once
-recurring   reranking  = queries × depth × compute per pair
+recurring   reranking  = Q × depth × compute per pair
 ```
+
+### 4.1 What `Q` is — two different questions
+
+`Q` is **how many questions have to be reranked**. One question arriving makes the
+cross-encoder score `d` candidates one at a time, so the total is `Q × d` pairs.
+
+**Two numbers can go in `Q`, and they answer different questions.**
+
+| | Value | Which question it answers |
+|---|---|---|
+| **① measured** | **80,720** | *"did the compute this experiment spent pay for itself?"* |
+| **② declared** | **10³ – 10⁷** | *"would it pay for itself if deployed?"* |
+
+**① was measured.** Gate 3 fixed 10,090 questions per client × 8 clients. The
+rerank scores were frozen into a cache in Week 2, so reranking ran **once per
+question** (without the cache it would have run once per pass, 1.5× more, with the
+same sign).
+
+**② cannot be measured.** It is a post-deployment quantity and nothing was
+deployed. The same system in one hospital serves hundreds of questions a day; in a
+search product, millions. So rather than pick one, the range is swept across
+orders of magnitude.
+
+> **Both accountings are reported.** An earlier draft put only the declared value
+> in `Q` and did not say so in Section 4 — the formula carried one undefined
+> symbol, and that symbol drove the conclusion (`break-even bandwidth ∝ 1/Q`).
+> That leaves no answer to *"could you not just pick the value that gives the
+> answer you want?"* Sections 5 and 6 now print both, and **the two agree.**
+
+**The omitted terms are named too.** Query-embedding cost is independent of depth,
+so it cannot separate the conditions and is dropped (the same argument as
+indexing). The ANN search that fetches the top `d` from the index grows with depth
+but sub-linearly, and **this one omission is not conservative** — it is the only
+term by which this model understates the true cost, and that direction makes the
+conclusion stronger.
+
+**Compute per pair comes with a condition too.** The 5.437 × 10⁹ figure is
+**measured with padding to 256 tokens**, not averaged over real passage lengths.
+Measured without padding it is 3.9× smaller, which shrinks the denominator and
+raises the break-even bandwidth — **so using 256 is unfavourable to reranking, and
+therefore conservative.**
 
 | `d` | Compute per query | On this CPU |
 |---|---|---|
@@ -416,40 +513,97 @@ exchange rate = bytes saved ÷ extra compute spent
 6. A particular deployment's verdict is this number multiplied by that
 deployment's parameters.
 
-**Query volume does enter it**, though. The numerator, the bytes saved, happens
-once during training; the denominator, the reranking compute, accumulates per
-query. The table below is quoted at **100,000 queries**, and the artefact records
-that (`exchange_rate_query_volume`).
+**`Q` does enter it — and that fixes what this quantity is.**
 
-**The sign, however, is independent of query volume.** The denominator is always
-positive, so the sign of the rate is the sign of the bytes saved. Changing the
-volume only scales the magnitude by 1/Q:
+```
+numerator    bytes saved       =  happens **once**, during training
+denominator  reranking compute =  accumulates over Q queries after deployment
+```
+
+**These are quantities from different episodes.** So this is not a rate in the
+sense of "how many bytes one FLOP buys"; it is **a one-off benefit divided by a
+lifetime cost**, and **whoever fixes the lifetime (`Q`) fixes the value.** It is a
+function of `Q`, not a single number — the magnitude scales as 1/Q.
+
+So the table below **states its `Q`**, and both values from Section 4.1 are given.
+
+**The sign is independent of `Q`.** The denominator is always positive, so the sign
+of the rate is the sign of the bytes saved:
 
 | Queries | Rate at `d` = 50 | Sign |
 |---|---|---|
-| 1,000 | −1.589 × 10⁻⁸ | negative |
-| 100,000 | −1.589 × 10⁻¹⁰ | negative |
-| 10,000,000 | −1.589 × 10⁻¹² | negative |
+| 1,000 | −4.054 × 10⁻⁸ | negative |
+| 100,000 | −4.054 × 10⁻¹⁰ | negative |
+| 10,000,000 | −4.054 × 10⁻¹² | negative |
 
 **The conclusion holds at any query volume.**
 
+**The numerator is the same statistic as Section 3.3** — the median over the 63
+targets, multiplied by the per-round communication (29.49 MB).
+
 | `d` | Bytes saved | Rate (index exists) | Rate (index built) |
 |---|---|---|---|
-| 3 | **−17.8 MB** | −1.09 × 10⁻⁸ | −6.57 × 10⁻⁹ |
-| 7 | **−60.6 MB** | −1.59 × 10⁻⁸ | −1.24 × 10⁻⁸ |
-| 10 | **−30.4 MB** | −5.59 × 10⁻⁹ | −4.66 × 10⁻⁹ |
-| 25 | +2.9 MB | +2.14 × 10⁻¹⁰ | +1.98 × 10⁻¹⁰ |
-| 50 | **−4.3 MB** | −1.59 × 10⁻¹⁰ | −1.53 × 10⁻¹⁰ |
+| **3** *(control)* | **+4.41 MB** | **+2.70 × 10⁻⁹** | **+1.62 × 10⁻⁹** |
+| 7 | −16.52 MB | −4.34 × 10⁻⁹ | −3.38 × 10⁻⁹ |
+| 10 | −6.27 MB | −1.15 × 10⁻⁹ | −9.61 × 10⁻¹⁰ |
+| 25 | −3.32 MB | −2.45 × 10⁻¹⁰ | −2.26 × 10⁻¹⁰ |
+| 50 | −11.02 MB | −4.05 × 10⁻¹⁰ | −3.90 × 10⁻¹⁰ |
 
-**Negative means compute was spent and more bytes were spent too.** Eight of the
-ten are negative.
+*(Rates at `Q` = 100,000; the artefact records this as
+`exchange_rate_query_volume`.)*
 
-**The two assumptions agree in sign at every depth**, so the conclusion does not
-depend on whether the index already exists. Charging for indexing shrinks the
-magnitude, not the direction.
+**Negative means compute was spent and more bytes were spent too. Eight of the ten
+cells are negative, and both positive cells are the control, `d` = 3.**
 
-The one positive, at `d` = 25, comes from a condition that Section 3.3 shows wins
-only 24 of 63 targets and typically loses.
+> **All four arms that really changed documents are negative.** If the only arm
+> that saved bytes is the one **whose documents cannot improve**, the saving is not
+> what better documents bought.
+
+**This table's signs differ from an earlier draft.** That draft read the numerator
+at **a single representative tau** (τ = 25.0185), which made `d` = 3 −17.8 MB and
+`d` = 25 +2.9 MB — **the opposite signs to Section 3.3's medians.** Two tables were
+using two different statistics. They now use one.
+
+### 5.1 Why the indexing assumption **cannot** change the sign
+
+```
+rate = bytes saved ÷ (reranking FLOPs + indexing FLOPs)
+                      └── positive ─┘   └── positive ─┘
+                            denominator = always positive
+```
+
+**The sign is set by the numerator alone.** The indexing FLOPs (1.09 × 10¹⁵) are
+positive and are added to the denominator, so that assumption **structurally**
+cannot change the direction.
+
+An earlier draft offered *"the two assumptions agree in sign at every depth"* as a
+robustness check. **It was arithmetic, not a check** — the numerator is identical
+in all ten cells and only the denominator moved, so no other outcome was possible.
+
+**That the conclusion does not depend on whether the index already exists is still
+true.** Its grounds are not the data but **the structure of the formula** — and
+since data can change while structure cannot, those grounds are stronger.
+
+What the two assumptions do change is **magnitude**, which is the two rate columns
+above. Their effect on break-even bandwidth is Section 6.
+
+### 5.2 The measured `Q` gives the same answer
+
+Section 4.1's two accountings, side by side.
+
+| `d` | Bytes saved | `B*` (measured `Q` = 80,720) | `B*` (deployment `Q` = 100,000) |
+|---|---|---|---|
+| **3** *(control)* | +4.41 MB | **0.0268 Mbps** | **0.0216 Mbps** |
+| 7 | −16.52 MB | 0 | 0 |
+| 10 | −6.27 MB | 0 | 0 |
+| 25 | −3.32 MB | 0 | 0 |
+| 50 | −11.02 MB | 0 | 0 |
+
+**80,720 and 100,000 differ by only 24 %, so the two accountings agree.** The
+conclusion does not change whether `Q` is read as "what the experiment spent" or
+"what a deployment would spend".
+
+And **the only non-zero cell is the control.** Where that region sits is Section 6.
 
 ---
 
@@ -498,22 +652,53 @@ log spacing.
 **And the sign does not depend on those ranges.** As below, changing the query
 volume ten-thousand-fold **does not change the sign** of the break-even bandwidth,
 because the numerator — the bytes saved — does not depend on query volume at all.
-At the four depths whose bytes saved are negative, `B*` is zero at every query
-volume; at `d` = 25, the only positive one, `B*` is positive but lies **below** the
-declared range. Either way, any range gives the same conclusion.
+At the **four depths that changed documents**, whose bytes saved are negative,
+`B*` is zero at every query volume; at the **control `d` = 3**, the only positive
+one, `B*` is positive at every query volume. No choice of range changes which
+depth falls on which side.
 
 ### Why query volume is an axis
 
-**Query volume** `Q` is how many queries the deployed system will serve over its
-life. Reranking runs **on every one of them**, forever.
+**Query volume** `Q` is how many questions the system handles after deployment
+(Section 4.1). Reranking runs **on each one**.
 
 ```
 total compute  =  Q × depth × compute per pair
 ```
 
 The **bytes saved, by contrast, happen once during training**. So as queries
-accumulate the denominator grows while the numerator does not, and `B*` falls. A
-system serving many queries has a narrower window in which reranking pays.
+accumulate the denominator grows while the numerator does not, and `B*` falls
+as 1/Q.
+
+### What this accounting does to the conclusion — read this first
+
+**Make `Q` large enough and a one-off saving can never pay for itself, by any
+method.**
+
+```
+Q = 10³    ->  B* = 2.2 × 10⁰   Mbps   (d = 3)
+Q = 10⁷    ->  B* = 2.2 × 10⁻⁴
+Q = 10¹²   ->  B* = 2.2 × 10⁻⁹         ->  tends to 0
+```
+
+**So part of the verdict "there is no operating region" is a consequence of the
+accounting, not a finding.** The numerator is fixed while the denominator grows
+without bound in `Q`.
+
+And as Section 2.4 recorded, **this accounting charges the cost without crediting
+the benefit.** Reranking at deployment also makes answers better — Week 2 measured
+`d` = 50's document quality 3.92 pp above `d` = 0's — and that gain is not on the
+books, because evaluation was held at `d` = 0.
+
+> **So this section's conclusion must be read as exactly this:**
+>
+> **"The fewer-rounds path alone cannot buy back the reranking compute."**
+>
+> **Not** "reranking is uneconomic." That verdict needs the serving gain, which
+> this experiment did not measure. Section 9 records it as a limitation.
+
+Within that scope the conclusion does not depend on the declared values — `Q`
+scales the magnitude and **cannot change the sign.**
 
 ### Measured — `d` = 50
 
@@ -541,33 +726,41 @@ modest query volumes**. At `d` = 50 there is no corner at all — no link is slo
 enough. `d` = 3, 7 and 10 save negative bytes too, so all five rows are the same
 for them.
 
-### `d` = 25 is not zero — and that matters more
+**All four arms that actually changed documents (`d` = 7, 10, 25, 50) look like
+this.** Their bytes saved are all negative, so all five rows are zero.
 
-`d` = 25, the one positive exchange rate in Section 5 (+2.9 MB), produces a
+### One condition is not zero — and it is the control
+
+The one positive in Section 5 is the **control, `d` = 3** (+4.41 MB). It produces a
 **non-zero `B*`** here. It is reported rather than hidden.
 
 | Query volume `Q` | `B*` (index held) | `B*` (index built) |
 |---|---|---|
-| 1,000 | 0.171 Mbps | 0.019 Mbps |
-| 10,000 | 0.017 Mbps | 0.010 Mbps |
-| 100,000 | 0.0017 Mbps | 0.0016 Mbps |
-| 1,000,000 | 0.00017 Mbps | 0.00017 Mbps |
-| 10,000,000 | 0.000017 Mbps | 0.000017 Mbps |
+| 1,000 | **2.161 Mbps** | 0.032 Mbps |
+| 10,000 | 0.216 Mbps | 0.028 Mbps |
+| 100,000 | 0.0216 Mbps | 0.013 Mbps |
+| 1,000,000 | 0.0022 Mbps | 0.0020 Mbps |
+| 10,000,000 | 0.00022 Mbps | 0.00022 Mbps |
 
-**So a paying region does exist mathematically.** What settles the matter is where
-it sits. The most favourable cell is **0.171 Mbps**, one sixth of **1 Mbps**, the
-slowest link this report declares. At 100,000 queries it is **0.0017 Mbps** — one
-six-hundredth of 1 Mbps. Paying off would require a link **hundreds of times
-slower than the slowest one the experiment contemplates.**
+**And the most favourable cell, 2.161 Mbps, lies inside the declared 1 – 1,000
+Mbps range.** A thousand-query pilot on a link slower than about 2 Mbps would, in
+arithmetic, break even.
 
-And that +2.9 MB itself comes from a condition that **loses at 39 of the 63
-targets** in Section 3.3. The same fact appears as 8 of Section 5's 10 exchange
-rates being negative, with both positive ones belonging to this `d` = 25.
+> **But that condition is `d` = 3 — the one that cannot change the documents.**
+>
+> Picking three out of three admits no new document (Section 2.1). It is not a
+> treatment anyone would deploy. **If the only arm that can buy anything back is
+> the arm that retrieves nothing, what was bought back is not retrieval.**
 
-> So the exact conclusion is not "no region exists mathematically" but this. **At
-> four depths no link is slow enough; the remaining depth's paying region lies
-> below the declared bandwidth range, and that depth typically loses on the rounds
-> axis. It is not an operable region.**
+**None of the four arms that did change documents has such a cell.** For
+`d` = 7, 10, 25 and 50, every one of the 40 bandwidth × query-volume cells is
+zero.
+
+> So the conclusion reads: **at no depth that changed the documents, and at no
+> link speed or query volume, does reranking pay. The only condition with a paying
+> region is the control, which changes no documents and is not a deployment
+> candidate.** (And this verdict itself sits inside the one-sided accounting noted
+> above.)
 
 ---
 
@@ -635,13 +828,41 @@ drift fell most spent the most **extra** rounds.
 
 ```
 within_noise — the largest saving is 0.15 rounds at d = 3 (the control), clearing
-               the error at only 26 of 63 targets; no depth resolves a saving at a
-               majority of targets
+               the decision threshold at only 5 of 63 targets; no depth resolves
+               a saving at a majority of targets
 ```
 
 The rule states in one line — **a saving counts as observed only when it exceeds
-its own error at more than half the targets (32 of 63).** No single point can
-overturn it.
+Section 2.3.1's threshold (standard error × 3.182) at more than half the targets
+(32 of 63).** No single point can overturn it.
+
+### 7.5 The limit of what this design can resolve
+
+**`within_noise` is not an excuse for "no effect was found". It is the only result
+this design can produce** — and that can be written as a number.
+
+Consider a **paired permutation test**, which assumes no distribution. In a paired
+design the only permutation is flipping the sign of each seed's difference, so
+there are `2⁴ = 16` arrangements. The most extreme outcome — all four seeds the
+same sign — has a two-tailed `p` of **2 / 16 = 0.125**.
+
+```
+4 seeds (this design)  ->  smallest reachable p = 0.125    p < 0.05  impossible
+6 seeds                ->                         0.031    reachable
+8 seeds                ->                         0.008    reachable
+```
+
+> **With four seeds, `p` < 0.05 is structurally unreachable however clean the data
+> are.** And the smallest `p` observed in this experiment is **0.127** — sitting
+> essentially on that floor.
+
+**Power says the same.** Detecting an effect at 80 % power would need it to be
+**0.67 – 1.96 points**; the observed effects are **0.03 – 0.60 points**. They were
+never catchable.
+
+So this section's verdict reads: **not "there is no effect" but "this design
+cannot make any effect significant, and six seeds would make it possible".** What
+has to change is part of the conclusion.
 
 ---
 
@@ -669,8 +890,14 @@ while **compute rises in proportion to depth** (0.34 → 2.46 s, **seven-fold**)
 Cost linear, effect saturating. The knee is between `d` = 10 and `d` = 25.
 
 **(c) Which depth is the best trade-off — `d` = 0.** No depth returns what it
-costs. `d` = 50 spends 2.46 s on every query in perpetuity and spends 4.3 MB
-**more** communication.
+costs. `d` = 50 spends 2.46 s on every query in perpetuity and spends **11.0 MB
+more** communication (Section 5, median over the 63 targets).
+
+**(d) And which accounting (a)–(c) sit inside — Sections 2.4 and 6.** The "compute
+per query" column is reranking's deployment cost, while its deployment benefit
+(serving accuracy) was set to zero. So what this section says is **"the
+fewer-rounds path alone cannot justify this compute"**, not "do not use
+reranking".
 
 ---
 
@@ -684,8 +911,10 @@ reranking does not buy back communication"*. The conditions are stated.
 | **The model is small** | one model, SmolLM2-135M. A model this size may lack the capacity to exploit better documents |
 | **Four seeds** | the measurement moves by ±0.16 to ±0.47 points. Resolving a 0.3-point effect would take sixteen seeds — 64 runs, 90 hours |
 | **The curves have not converged** | the budget was fixed at 59 rounds, and most curves peak at round 50 or later |
-| **Six depths** | 5, 20 and 30 were not measured: every observed effect sits inside the 0.31-point **upper bound** the control sets, and a finer ladder cannot read a quantity below the smallest division |
-| **The control reorders** | `d` = 3 cannot change the documents but does change their order, so its +0.31 is an **upper bound on the noise**, not pure noise. Isolating the ordering effect would need a condition that runs **the same three documents in several orders**, which was not measured. The conclusion does not rest on this, because it also holds for the comparison against `d` = 3 as baseline (Section 2.3) |
+| **Six depths** | 5, 20 and 30 were not measured: every observed effect (0.03 – 0.60 points) sits below this design's decision threshold (0.52 – 1.48 points), and a finer ladder cannot read a quantity below the smallest division |
+| **The control reorders** | `d` = 3 cannot change the documents but does change their order. Its +0.31 ± 0.37 is **an estimate of the ordering effect**, and it is indistinguishable from zero (`p` = 0.46), so neither the size nor the sign of that effect can be fixed from this data. Isolating it would need a condition that runs **the same three documents in several orders**, which was not measured. The conclusion does not rest on that unknown — not because ordering is assumed to cancel, but because **both `d` = 0 and `d` = 3 were used as baselines and all nine contrasts came out non-significant** (Section 2.3.1) |
+| **⚠️ One-sided accounting** | Sections 5 and 6 charge reranking's deployment **cost** and credit its deployment **benefit** (serving accuracy) as zero, because evaluation was held at `d` = 0 (Section 2.4). Make `Q` large enough and a one-off saving can never pay for itself **by any method** (`B*` ∝ 1/Q → 0). So what this report can say is **"the fewer-rounds path alone cannot buy it back"**, not "reranking is uneconomic". Saying the latter would need an experiment that also measures the serving gain |
+| **⚠️ The permutation floor** | With four seeds, the smallest two-tailed `p` a paired permutation test can reach is **0.125** (2⁴ = 16 sign arrangements). However clean the data, `p` < 0.05 is **structurally unreachable** — and the smallest `p` observed is 0.127, sitting on that floor. The `within_noise` verdict is the only result this design can produce, and **six seeds would bring it to 0.031** (Section 7.5) |
 | **An assumed device speed** | break-even bandwidth **scales** with it. Being only a constant of proportionality, it cannot change the sign — the four depths with negative bytes saved stay at zero for any device speed. But `d` = 25's `B*` scales with it, so a faster device could lift that region into the declared range — about **6×** faster at 1,000 queries, about **600×** at 100,000 (Section 6) |
 
 **The apparatus itself worked.** New-document share rose monotonically from 0 to

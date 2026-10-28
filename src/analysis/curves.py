@@ -240,3 +240,80 @@ def local_slope(curves: Sequence[Sequence[dict]], r0: int, r1: int, metric: str 
     if a is None or b is None or r1 == r0:
         return None
     return (b - a) / (r1 - r0)
+
+
+# --- 분해능 (Week 5 보강) ---------------------------------------------------
+#
+# 예전에는 "절약이 자기 표준오차보다 크면 관측" 이라는 1 시그마 규칙이었고,
+# 보고서 본문은 다시 "표준오차의 2 배" 로 적었다. 둘 다 n=4 에서는 틀렸다.
+# 시드 4 개면 자유도 3 이고, 양측 95 % 임계값은 1.96 도 2 도 아니라 **3.182** 다.
+# 느슨한 쪽으로 1.6 배 틀렸고, 그래서 d=10 의 +0.60 +- 0.28 이 "유의" 로 읽혔다
+# (올바른 검정에서는 p = 0.127).
+_T95 = {1: 12.706, 2: 4.303, 3: 3.182, 4: 2.776, 5: 2.571, 6: 2.447, 7: 2.365,
+        8: 2.306, 9: 2.262, 10: 2.228, 11: 2.201, 12: 2.179, 13: 2.160,
+        14: 2.145, 15: 2.131, 16: 2.120, 17: 2.110, 18: 2.101, 19: 2.093,
+        20: 2.086, 25: 2.060, 30: 2.042}
+
+
+def t_critical_95(df: int) -> float:
+    """양측 95 % t 임계값. df 가 표에 없으면 보수적으로 아래쪽 df 값을 쓴다."""
+    if df < 1:
+        return float("inf")
+    if df in _T95:
+        return _T95[df]
+    smaller = [k for k in _T95 if k < df]
+    return _T95[max(smaller)] if smaller else 1.960
+
+
+def permutation_floor_p(n: int) -> Optional[float]:
+    """부호 치환검정으로 **낼 수 있는 가장 작은** 양측 p.
+
+    대응 설계에서 치환은 n 개 차이의 부호를 뒤집는 것뿐이므로 배열이 2^n 가지다.
+    n=4 면 16 가지이고 최소 양측 p 는 2/16 = 0.125 - 데이터가 아무리 깨끗해도
+    **p < 0.05 가 구조적으로 불가능**하다. 이 한 줄이 within_noise 판정을
+    변명이 아니라 설계 사실로 만든다. n=6 부터 0.031 로 가능해진다.
+    """
+    if n < 1:
+        return None
+    return 2.0 / (2 ** n)
+
+
+def paired_saving(
+    baseline_per_seed: Sequence[Optional[float]],
+    depth_per_seed: Sequence[Optional[float]],
+) -> Dict[str, Optional[float]]:
+    """시드로 짝지은 라운드 절약 (baseline - depth).
+
+    **왜 대응(paired)인가.** 시드마다 난수 분할과 초기화가 달라 라운드 수가
+    통째로 올라가거나 내려간다. 두 조건을 같은 시드에서 빼면 그 성분이 상쇄된다.
+    실측으로 비대응 차이의 표준오차는 0.879 라운드인데 대응은 0.16~0.47 이다 -
+    같은 데이터에서 분해능이 2~5 배 좋아진다.
+
+    두 수열은 같은 시드 순서여야 한다 (enumerate_runs 가 seed 외부 / depth
+    내부로 돌기 때문에 group_by_depth 의 결과가 시드 순서다).
+    """
+    pairs = [
+        (b, d) for b, d in zip(baseline_per_seed, depth_per_seed)
+        if b is not None and d is not None
+        and not math.isnan(b) and not math.isnan(d)
+    ]
+    n = len(pairs)
+    if n == 0:
+        return {"mean": None, "stderr": None, "n": 0,
+                "t_critical": None, "threshold": None, "resolved": False}
+    diffs = [b - d for b, d in pairs]
+    stats = mean_and_stderr(diffs)
+    stderr = stats["stderr"]
+    t_crit = t_critical_95(n - 1) if n > 1 else None
+    threshold = None if stderr is None or t_crit is None else t_crit * stderr
+    return {
+        "mean": stats["mean"],
+        "stderr": stderr,
+        "n": n,
+        "t_critical": t_crit,
+        "threshold": threshold,
+        "resolved": bool(
+            threshold is not None and stats["mean"] is not None
+            and abs(stats["mean"]) > threshold
+        ),
+    }
