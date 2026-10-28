@@ -11,7 +11,7 @@ authors:
     given-names: Jeonghun
     orcid: "https://orcid.org/0009-0002-3486-5590"
     affiliation: Macquarie University
-repository-code: "https://github.com/hufs0529/rag-fl"
+repository-code: "https://github.com/hufs0529/rag_fl_STEM_placement"
 abstract: >-
   Code, experiment logs and analysis scripts for a six-week STEM
   research placement testing whether client-side retrieval compute
