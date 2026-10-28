@@ -29,10 +29,18 @@ class RunSpec:
     local_steps_per_round: int
     total_local_steps: int
     rounds: int
+    variant: str = ""
 
     @property
     def name(self) -> str:
-        return f"d{self.depth}_s{self.seed}"
+        """run 이름. variant 가 있으면 뒤에 붙어 **다른 파일로** 기록된다.
+
+        모델을 바꿔 같은 depth/seed 를 다시 돌릴 때 이름이 같으면 기존 로그를
+        덮어쓴다. 4 주차의 24 run 을 날리는 사고가 되므로, 베이스 모델을 바꾸는
+        비교는 반드시 variant 를 받는다 (`--set treatment.variant=small`).
+        """
+        suffix = f"__{self.variant}" if self.variant else ""
+        return f"d{self.depth}_s{self.seed}{suffix}"
 
 
 def partition_seed_for(seed: int, partition_seeds) -> int:
@@ -78,6 +86,7 @@ def make_run_spec(cfg, depth: int, seed: int, calibrated_path: str = None) -> Ru
         local_steps_per_round=int(schedule["local_steps_per_round"]),
         total_local_steps=int(schedule["total_local_steps"]),
         rounds=int(schedule["rounds"]),
+        variant=str(cfg.treatment.get("variant", "") or ""),
     )
 
 

@@ -99,6 +99,57 @@ def is_complete(cfg, spec: RunSpec) -> bool:
         return False
 
 
+def guard_against_overwriting_another_model(
+    cfg, specs: Sequence[RunSpec], overwrite: bool = False
+) -> None:
+    """다른 모델의 로그를 같은 이름으로 덮어쓰려는 시도를 막는다.
+
+    run 이름은 depth 와 seed 로만 만들어지므로, 베이스 모델만 바꿔 다시 돌리면
+    **기존 로그를 조용히 덮어쓴다.** 4 주차의 24 run 이 그렇게 사라질 수 있다.
+
+    두 경우에 멈춘다:
+      (1) 완료된 run 이 기록한 모델이 지금 설정의 모델과 **다를** 때
+      (2) --overwrite 인데 완료된 run 에 모델 기록이 **없을** 때 - 무엇을
+          지우는지 확인할 수 없으므로, 확인 불가는 통과시키지 않는다
+    둘 다 variant 를 주면 이름이 달라져 해소된다.
+    """
+    configured = str(cfg.model.base_model)
+    variant = str(cfg.treatment.get("variant", "") or "")
+    if variant:
+        return
+    clashes, unverifiable = {}, []
+    for spec in specs:
+        path = summary_path(cfg, spec)
+        if not path.exists():
+            continue
+        recorded = load_json(path).get("base_model")
+        if not recorded:
+            unverifiable.append(spec.name)
+        elif recorded != configured:
+            clashes[spec.name] = recorded
+
+    def listed(names):
+        names = sorted(names)
+        return ", ".join(names[:4]) + (" ..." if len(names) > 4 else "")
+
+    hint = (f"모델을 바꿔 비교하려면 variant 를 붙여 **별개 이름으로** 기록할 것:\n"
+            f"  --set treatment.variant=<이름>   예) --set treatment.variant=smol360\n"
+            f"기존 로그를 정말 교체할 생각이면 먼저 results/logs/runs 를 백업할 것.")
+    if clashes:
+        raise SystemExit(
+            f"설정의 모델은 {configured} 인데, 이미 있는 run 은 "
+            f"{sorted(set(clashes.values()))} 로 기록되어 있다 ({listed(clashes)}).\n"
+            f"이대로 돌리면 그 로그를 **덮어쓴다.**\n{hint}"
+        )
+    if overwrite and unverifiable:
+        raise SystemExit(
+            f"--overwrite 가 지울 run 중 {len(unverifiable)} 개에 base_model 기록이 "
+            f"없다 ({listed(unverifiable)}).\n"
+            f"그 run 이 어느 모델로 돌았는지 확인할 수 없으므로, 지금 설정"
+            f"({configured})과 같은지 알 수 없다. 확인 불가는 통과시키지 않는다.\n{hint}"
+        )
+
+
 def pending(cfg, specs: Sequence[RunSpec]) -> List[RunSpec]:
     return [spec for spec in specs if not is_complete(cfg, spec)]
 
@@ -143,8 +194,12 @@ def check_integrity(cfg, specs: Sequence[RunSpec]) -> dict:
         return {s[field] for s in summaries.values() if field in s}
 
     issues = []
+    # base_model 이 이 목록에 있는 이유: payload 크기는 LoRA 파라미터 수에서 나오고
+    # 그것은 모델의 hidden size 에 달려 있다. 다른 모델이 섞이면 "같은 예산" 이
+    # 깨지므로 조건 간 비교가 성립하지 않는다. 모델을 바꾼 비교는 variant 로
+    # 분리해 **별개의 비교 집합**으로 다룬다.
     for field in ("rounds", "num_clients", "payload_bytes_per_client_per_direction",
-                  "local_steps_per_round", "total_bytes",
+                  "local_steps_per_round", "total_bytes", "base_model",
                   "batch_size", "grad_accumulation", "examples_per_step"):
         values = collect(field)
         if len(values) > 1:

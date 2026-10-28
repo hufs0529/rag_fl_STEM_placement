@@ -127,6 +127,13 @@ rerank:
 
 # --- treatment axis --------------------------------------------------------
 treatment:
+  # 베이스 모델을 바꿔 돌린 비교를 **별개 이름으로** 기록하기 위한 꼬리표.
+  # 비어 있으면 run 이름은 d{depth}_s{seed} 이고, 값이 있으면 d{depth}_s{seed}__{variant}
+  # 가 된다. 모델만 바꿔 같은 depth/seed 를 돌리면 이름이 같아 기존 로그를
+  # 덮어쓰기 때문이다 - run_main_runs.py 가 그 경우를 막고 이 값을 요구한다.
+  #   예) --set model.base_model=HuggingFaceTB/SmolLM2-360M-Instruct \
+  #       --set treatment.variant=smol360
+  variant: ""
   # d = 재순위를 매기는 dense 후보 수. d=0 은 reranking 없음(dense only).
   # d=3 은 control: dense 가 이미 고른 3개를 재정렬만 한다(ordering effect 분리).
   #

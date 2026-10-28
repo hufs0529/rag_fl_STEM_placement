@@ -179,7 +179,10 @@ def main() -> int:
     args = parser.parse_args()
     cfg = config_from_args(args)
 
-    report_path = Path(args.report or Path(cfg.paths.log_dir) / "analysis" / "exchange_rate.json")
+    variant = str(cfg.treatment.get("variant", "") or "")
+    stem = f"exchange_rate__{variant}" if variant else "exchange_rate"
+    report_path = Path(args.report
+                       or Path(cfg.paths.log_dir) / "analysis" / f"{stem}.json")
     if not report_path.exists():
         print(f"{report_path} not found; run scripts/analyze_exchange_rate.py first.")
         return 1

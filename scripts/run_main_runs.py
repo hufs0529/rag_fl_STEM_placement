@@ -27,7 +27,8 @@ from src.config import add_config_args, config_from_args
 from src.fl_runner import run_experiment
 from src.logging_utils import banner, save_json
 from src.run_matrix import (
-    acquire_sweep_lock, check_integrity, enumerate_runs, is_complete, pending,
+    acquire_sweep_lock, check_integrity, enumerate_runs,
+    guard_against_overwriting_another_model, is_complete, pending,
 )
 
 
@@ -62,6 +63,10 @@ def main() -> int:
                 f"{flag} 값을 바로잡을 것."
             )
         specs = [s for s in specs if getattr(s, field) in chosen]
+
+    # 모델만 바꿔 같은 depth/seed 를 돌리면 run 이름이 같아 기존 로그를 덮어쓴다.
+    # --overwrite 일 때가 실제로 파괴적이므로 그쪽에서도 반드시 통과시킨다.
+    guard_against_overwriting_another_model(cfg, specs, overwrite=args.overwrite)
 
     todo = specs if args.overwrite else pending(cfg, specs)
     backend = args.backend or cfg.get_path("federated.backend", "flower")

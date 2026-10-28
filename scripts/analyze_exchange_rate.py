@@ -301,7 +301,11 @@ def main() -> int:
         "mechanism": {**table, **mechanism},
         "sweep_summary": {str(d): v for d, v in sweep_by_depth.items()},
     }
-    save_json(report, log_dir / "analysis" / "exchange_rate.json")
+    # variant 가 있으면 산출물 이름도 분리한다. 그러지 않으면 모델을 바꾼 비교를
+    # 분석하는 순간 본 실험의 exchange_rate.json 을 덮어쓴다.
+    variant = str(cfg.treatment.get("variant", "") or "")
+    stem = f"exchange_rate__{variant}" if variant else "exchange_rate"
+    save_json(report, log_dir / "analysis" / f"{stem}.json")
 
     # --- 출력 ---------------------------------------------------------------
     banner("matched-budget reading (primary: no tau to choose)")
@@ -378,7 +382,7 @@ def main() -> int:
               f"divergence reduction {_fmt(row['divergence_reduction'])}  "
               f"rounds saved {_fmt(row['rounds_saved'])}")
     print(f"\n  verdict: {mechanism['verdict']} - {mechanism['note']}")
-    print(f"\n  wrote {log_dir / 'analysis' / 'exchange_rate.json'}")
+    print(f"\n  wrote {log_dir / 'analysis' / f'{stem}.json'}")
     return 0
 
 

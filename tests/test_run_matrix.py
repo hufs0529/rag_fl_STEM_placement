@@ -286,3 +286,73 @@ def test_a_value_the_matrix_does_have_is_accepted():
     cfg = load_config(str(Path(__file__).resolve().parents[1] / "configs/experiment_config.yaml"))
     code, out = _run_main_runs(None, "--only-depth", str(cfg.treatment.depths[-1]))
     assert code == 0, out
+
+
+# --- 모델을 바꾼 비교 (Week 6) ----------------------------------------------
+
+def test_a_variant_gives_the_run_its_own_name(tmp_path):
+    """variant 가 없으면 모델만 바꿔 돌린 run 이 기존 로그를 덮어쓴다."""
+    from src.experiment import make_run_spec
+    cfg = load_config("configs/experiment_config.yaml")
+    plain = make_run_spec(cfg, 25, 1)
+    assert plain.name == "d25_s1"
+
+    cfg.set_path("treatment.variant", "smol360")
+    tagged = make_run_spec(cfg, 25, 1)
+    assert tagged.name == "d25_s1__smol360"
+    assert tagged.name != plain.name          # 다른 파일로 기록된다
+    # 나머지 조건은 그대로여야 한다 - 비교가 성립하려면 스케줄이 같아야 한다
+    assert (tagged.rounds, tagged.local_steps_per_round, tagged.partition_seed) == \
+           (plain.rounds, plain.local_steps_per_round, plain.partition_seed)
+
+
+def test_changing_the_model_without_a_variant_is_refused(tmp_path):
+    """4 주차의 24 run 을 조용히 날리는 사고를 막는다."""
+    from src.run_matrix import guard_against_overwriting_another_model
+    from src.experiment import make_run_spec
+    from src.logging_utils import save_json
+
+    cfg = load_config("configs/experiment_config.yaml")
+    cfg.set_path("paths.log_dir", str(tmp_path))
+    for key, value in (("local_steps_per_round", 32), ("total_local_steps", 1892),
+                       ("rounds", 59)):
+        cfg.set_path(f"train.{key}", value)
+    spec = make_run_spec(cfg, 25, 1)
+    (tmp_path / "runs").mkdir(parents=True, exist_ok=True)
+    save_json({"run": spec.name, "base_model": "HuggingFaceTB/SmolLM2-135M-Instruct"},
+              tmp_path / "runs" / f"{spec.name}_summary.json")
+
+    # 같은 모델이면 통과한다
+    cfg.set_path("model.base_model", "HuggingFaceTB/SmolLM2-135M-Instruct")
+    guard_against_overwriting_another_model(cfg, [spec])
+
+    # 모델이 다르고 variant 가 없으면 멈춘다
+    cfg.set_path("model.base_model", "HuggingFaceTB/SmolLM2-360M-Instruct")
+    with pytest.raises(SystemExit) as err:
+        guard_against_overwriting_another_model(cfg, [spec])
+    assert "variant" in str(err.value)
+
+    # variant 를 주면 이름이 달라지므로 통과한다
+    cfg.set_path("treatment.variant", "smol360")
+    guard_against_overwriting_another_model(cfg, [make_run_spec(cfg, 25, 1)])
+
+
+def test_mixing_two_base_models_is_an_integrity_issue(tmp_path):
+    """payload 크기는 모델의 hidden size 에서 나온다 - 섞이면 예산이 같지 않다."""
+    from src.run_matrix import check_integrity
+    from src.experiment import make_run_spec
+    from src.logging_utils import save_json
+
+    cfg = load_config("configs/experiment_config.yaml")
+    cfg.set_path("paths.log_dir", str(tmp_path))
+    for key, value in (("local_steps_per_round", 32), ("total_local_steps", 1892),
+                       ("rounds", 59)):
+        cfg.set_path(f"train.{key}", value)
+    (tmp_path / "runs").mkdir(parents=True, exist_ok=True)
+    specs = [make_run_spec(cfg, d, 1) for d in (0, 25)]
+    for spec, model in zip(specs, ("SmolLM2-135M", "SmolLM2-360M")):
+        save_json({"run": spec.name, "base_model": model, "rounds": 59},
+                  tmp_path / "runs" / f"{spec.name}_summary.json")
+
+    fields = [i["field"] for i in check_integrity(cfg, specs)["issues"]]
+    assert "base_model" in fields

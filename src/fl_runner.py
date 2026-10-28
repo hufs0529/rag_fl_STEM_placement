@@ -135,6 +135,11 @@ def run_experiment(
         # 소비하는 예제 수가 같지만(tests/test_local_train.py), 쪼개는 방식이 다르면
         # 가변 길이 텍스트에서 토큰 가중이 미세하게 달라진다. 전 run 이 같은 설정이었음을
         # check_runs.py 가 증명할 수 있어야 한다.
+        # 어느 베이스 모델이었는지. 이것이 없으면 다른 모델로 같은 depth/seed 를
+        # 돌렸을 때 run 이름이 같아 **조용히 덮어써진다.** run_matrix 의 무결성
+        # 점검과 덮어쓰기 가드가 이 필드를 읽는다.
+        "base_model": str(cfg.model.base_model),
+        "variant": str(getattr(spec, "variant", "") or ""),
         "batch_size": int(cfg.train.batch_size),
         "grad_accumulation": int(cfg.train.get("grad_accumulation", 1) or 1),
         "examples_per_step": (
