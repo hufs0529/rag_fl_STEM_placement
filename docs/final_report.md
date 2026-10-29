@@ -595,13 +595,13 @@ proposition rests on.
 All code, per-round logs and analysis scripts are archived on Zenodo and
 developed openly on GitHub.
 
-> **Archive.** Zenodo, DOI **10.5281/zenodo.XXXXXXXX** (concept DOI, resolves to
+> **Archive.** Zenodo, DOI **10.5281/zenodo.23718101** (concept DOI, resolves to
 > the latest version).
 > **Repository.** https://github.com/hufs0529/rag_fl_STEM_placement
 >
 > Cite as: Kim, J. (2026). *Buying back communication with retrieval compute in
 > federated fine-tuning: code and experiment logs* [Software]. Zenodo.
-> https://doi.org/10.5281/zenodo.XXXXXXXX
+> https://doi.org/10.5281/zenodo.23718101
 
 The archive contains `src/`, `tests/`, `scripts/`,
 `configs/`, `docs/`, the 24 per-round JSONL run logs with their summaries, the

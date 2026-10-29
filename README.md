@@ -1,5 +1,7 @@
 # Buying Back Communication with Retrieval Compute
 
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.23718101.svg)](https://doi.org/10.5281/zenodo.23718101)
+
 **The Exchange Rate of Client-Side Reranking in Federated LLM Fine-Tuning**
 
 A 6-week STEM research placement project. This repository contains the full
@@ -377,10 +379,17 @@ from the Hugging Face Hub at run time, and their identifiers are recorded in
 ## 11. Archive and citation
 
 The citable snapshot is deposited on Zenodo and linked to this repository through
-an *is supplement to* relation. Deposit metadata is in
-[`.zenodo.json`](.zenodo.json) and citation metadata in
-[`CITATION.cff`](CITATION.cff); the DOI is added to `CITATION.cff` once Zenodo
-issues it for the release.
+an *is supplement to* relation.
+
+| | |
+|---|---|
+| **Concept DOI** (all versions, cite this) | [10.5281/zenodo.23718101](https://doi.org/10.5281/zenodo.23718101) |
+| Version DOI (`v1.0.0`) | [10.5281/zenodo.23718102](https://doi.org/10.5281/zenodo.23718102) |
+
+Deposit metadata is in [`.zenodo.json`](.zenodo.json) and citation metadata in
+[`CITATION.cff`](CITATION.cff). `scripts/set_doi.py` writes a newly issued DOI
+into the deliverables and rebuilds their PDFs in one step, and refuses to report
+success unless the identifier is present in the PDFs themselves.
 
 Verify an archive copy before using it:
 

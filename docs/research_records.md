@@ -347,8 +347,8 @@ including `MANIFEST.sha256`, and is linked to the GitHub repository through an
 
 | | |
 |---|---|
-| Concept DOI (all versions) | **10.5281/zenodo.XXXXXXXX** |
-| Version DOI (`v1.0.0`) | **10.5281/zenodo.YYYYYYYY** |
+| Concept DOI (all versions) | **10.5281/zenodo.23718101** |
+| Version DOI (`v1.0.0`) | **10.5281/zenodo.23718102** |
 | Repository | https://github.com/hufs0529/rag_fl_STEM_placement |
 | Release tag | `v1.0.0` |
 
