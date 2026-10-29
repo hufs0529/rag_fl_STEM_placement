@@ -35,6 +35,8 @@ scipy==1.17.1
 
 # --- report export (optional) ---
 python-docx==1.2.0       # scripts/md2docx.py
+reportlab==5.1.0         # scripts/md2pdf.py - 제출 서식(12pt Times/1.5/2cm/쪽번호)
+pypdf==6.21.4            # scripts/set_doi.py - 제출할 PDF 에 DOI 가 들어갔는지 확인
 
 # --- test ---
 pytest==9.1.1

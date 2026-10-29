@@ -174,7 +174,7 @@ an operating regime, not a single verdict.
 ## 3. Repository layout
 
 ```
-rag-fl/
+rag_fl_STEM_placement/
 ├── configs/
 │   ├── experiment_config.yaml   # single source of truth for the whole plan
 │   └── dev_config.yaml          # reduced-scale overlay for rehearsal/tests

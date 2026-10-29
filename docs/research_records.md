@@ -340,13 +340,26 @@ different code a few months later.
 ## 9. Archiving and long-term storage
 
 **Citable snapshot.** The repository is archived on Zenodo as a versioned
-release with a DOI, under the same arrangement used for the author's previous
-placement (Zenodo record 22781474). The Zenodo deposit is a single zip of the
-`main` branch snapshot, including `MANIFEST.sha256`, and is linked to the GitHub
-repository through an "is supplement to" relation.
+release, under the same arrangement used for the author's previous placement
+(Zenodo record 22781474). The deposit is a single zip of the tagged snapshot,
+including `MANIFEST.sha256`, and is linked to the GitHub repository through an
+"is supplement to" relation.
 
-**Working repository.** GitHub, `hufs0529/rag-fl`, with the week branches
-retained.
+| | |
+|---|---|
+| Concept DOI (all versions) | **10.5281/zenodo.XXXXXXXX** |
+| Version DOI (`v1.0.0`) | **10.5281/zenodo.YYYYYYYY** |
+| Repository | https://github.com/hufs0529/rag_fl_STEM_placement |
+| Release tag | `v1.0.0` |
+
+Zenodo mints two identifiers. The **concept DOI** resolves to whichever version
+is current and is the one cited in the report and in `CITATION.cff`; the
+**version DOI** pins the exact snapshot a given result was produced from. Both
+are recorded here so that a reader who needs the precise bytes behind a number
+can get them, rather than only the latest state of the project.
+
+**Working repository.** GitHub, `hufs0529/rag_fl_STEM_placement`, with the week
+branches retained.
 
 **Retention.** Zenodo provides long-term preservation with a persistent DOI;
 nothing in this project depends on GitHub remaining available. The archive is

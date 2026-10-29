@@ -593,7 +593,17 @@ proposition rests on.
 ## 10. Data and code availability
 
 All code, per-round logs and analysis scripts are archived on Zenodo and
-developed openly on GitHub. The archive contains `src/`, `tests/`, `scripts/`,
+developed openly on GitHub.
+
+> **Archive.** Zenodo, DOI **10.5281/zenodo.XXXXXXXX** (concept DOI, resolves to
+> the latest version).
+> **Repository.** https://github.com/hufs0529/rag_fl_STEM_placement
+>
+> Cite as: Kim, J. (2026). *Buying back communication with retrieval compute in
+> federated fine-tuning: code and experiment logs* [Software]. Zenodo.
+> https://doi.org/10.5281/zenodo.XXXXXXXX
+
+The archive contains `src/`, `tests/`, `scripts/`,
 `configs/`, `docs/`, the 24 per-round JSONL run logs with their summaries, the
 pilot-gate artefacts, the analysis JSON and the figures, together with
 `MANIFEST.sha256` for integrity verification and a frozen environment listing.
