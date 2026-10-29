@@ -31,6 +31,4 @@ keywords:
   - communication efficiency
   - large language models
 license: Apache-2.0
-# DOI 는 Zenodo 가 배포를 받아들인 **뒤에** 발급된다. 첫 릴리스가 끝나면
-# 그 DOI 를 아래에 적고 커밋할 것 - 지금 임의의 값을 적으면 잘못된 인용이 박힌다.
-# doi: 10.5281/zenodo.XXXXXXXX
+doi: 10.5281/zenodo.23718102
